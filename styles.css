@@ -1,80 +1,38 @@
-:root{
-  --bg:#0f1317; --card:#171b21; --text:#e8eef5; --muted:#98a3af;
-  --accent:#2dd4bf; --soft:#2a3038; --danger:#ef4444;
-}
-:root.light{
-  --bg:#f5f7fb; --card:#ffffff; --text:#101317; --muted:#616a73;
-  --accent:#10b981; --soft:#e9edf2; --danger:#ef4444;
-}
-:root.oled{ --bg:#000; --card:#0a0a0a; --text:#eaeaea; --muted:#9aa3ad; --accent:#22d3ee; --soft:#101010; --danger:#ef4444; }
+// Service Worker v3 – simple cache-first
+const CACHE = 'mindgym-v3';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css',
+  './app.js',
+  './manifest.webmanifest',
+  './version.json'
+];
 
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
-  background:var(--bg); color:var(--text);
-  -webkit-tap-highlight-color: transparent;
-}
-.hidden{display:none}
+self.addEventListener('install', e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+  self.skipWaiting();
+});
 
-.topbar{
-  display:flex; align-items:center; justify-content:space-between;
-  padding: clamp(12px,3vw,20px);
-}
-.brand{font-weight:800; font-size: clamp(20px,5vw,28px)}
-.stats{display:flex; gap:14px; opacity:.9}
-.stats b{font-variant-numeric: tabular-nums;}
-.pill{background:var(--accent); color:#021; border:0; padding:10px 16px; border-radius:999px; font-weight:700}
-.soft{background:var(--soft); color:var(--text); border:0; padding:10px 16px; border-radius:12px}
-.primary{background:var(--accent); color:#021; border:0; padding:12px 18px; border-radius:12px; font-weight:800}
-.danger{background:var(--danger); color:#fff; border:0; padding:10px 16px; border-radius:12px}
+self.addEventListener('activate', e=>{
+  e.waitUntil(
+    caches.keys().then(keys=>Promise.all(
+      keys.filter(k=>k.startsWith('mindgym-') && k!==CACHE).map(k=>caches.delete(k))
+    ))
+  );
+  self.clients.claim();
+});
 
-main{padding: 0 clamp(12px,3.5vw,24px) 36px}
-.card{
-  background:var(--card);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:16px;
-  padding: clamp(16px,3.5vw,22px);
-  box-shadow: 0 6px 24px rgba(0,0,0,.25);
-}
-.hero h1{margin:0 0 6px}
-.hero p{margin:0; color:var(--muted)}
-
-.grid{
-  margin-top:18px;
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap:14px;
-}
-.module{ text-align:left; cursor:pointer }
-.module h2{ margin:0 0 6px; font-size:20px }
-.module p{ margin:0; color:var(--muted) }
-.beta{background:#facc15; color:#111; padding:2px 6px; border-radius:999px; font-size:12px; vertical-align:middle}
-
-.gameHeader{display:flex; align-items:center; justify-content:space-between}
-.gameArea{
-  margin-top:14px; min-height:360px;
-  display:flex; align-items:center; justify-content:center;
-}
-.controls{
-  margin-top:14px; display:flex; align-items:center; gap:12px; justify-content:flex-start
-}
-.scorebox{margin-left:auto; color:var(--muted)}
-
-.board{
-  display:grid; gap:10px;
-}
-.circle{
-  width:56px; height:56px; border-radius:50%;
-  background:#1f2937; border:2px solid #334155;
-}
-.circle.highlight{ background:var(--accent); border-color:var(--accent) }
-.circle.odd{ filter:brightness(1.25) saturate(1.1) }
-
-#dlgSettings::backdrop{background:rgba(0,0,0,.55)}
-.settings{min-width:min(92vw,460px)}
-.settings h3{margin:0 0 12px}
-.settings .row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px dashed rgba(255,255,255,.07)}
-.settings .row:last-child{border-bottom:0}
-.settings select,.settings input[type="checkbox"]{font-size:16px}
-.settings .buttons{display:flex; justify-content:space-between; gap:10px; margin-top:14px}
+self.addEventListener('fetch', e=>{
+  const {request} = e;
+  if(request.method!=='GET') return;
+  e.respondWith(
+    caches.match(request).then(cached=>{
+      return cached || fetch(request).then(resp=>{
+        const copy = resp.clone();
+        caches.open(CACHE).then(c=>c.put(request, copy)).catch(()=>{});
+        return resp;
+      }).catch(()=> cached);
+    })
+  );
+});
