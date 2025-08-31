@@ -1,1 +1,37 @@
-{"name": "MindGym", "short_name": "MindGym", "start_url": ".", "display": "standalone", "background_color": "#0f1316", "theme_color": "#0f1316", "icons": []}
+{
+  "name": "MindGym",
+  "short_name": "MindGym",
+  "description": "Train focus, memory, visualization, and reasoning. XP, levels, streaks.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f141d",
+  "theme_color": "#27d3a1",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["education", "productivity", "games", "health"],
+  "shortcuts": [
+    {
+      "name": "Start Focus",
+      "short_name": "Focus",
+      "url": "/#start=focus",
+      "description": "Jump into Focus Tap"
+    },
+    {
+      "name": "Circle Hunt",
+      "short_name": "Hunt",
+      "url": "/#start=hunt",
+      "description": "Find the odd circle"
+    },
+    {
+      "name": "Visual Span",
+      "short_name": "Span",
+      "url": "/#start=span",
+      "description": "Repeat the sequence"
+    }
+  ],
+  "prefer_related_applications": false
+}
