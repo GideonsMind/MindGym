@@ -1,190 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
-  />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#101317" />
   <title>MindGym</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="icons/icon-192.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="styles.css" />
-
-  <noscript>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-      .nojs { background:#fee; border:1px solid #f88; padding:16px; border-radius:12px; }
-    </style>
-  </noscript>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <noscript>
-    <div class="nojs">
-      MindGym needs JavaScript enabled. Please enable it in your browser settings.
-    </div>
-  </noscript>
-
-  <!-- Top Bar -->
   <header class="topbar">
-    <div class="brand">
-      <span class="logo-dot"></span>
-      <h1>MindGym</h1>
-    </div>
-
+    <div class="brand">MindGym</div>
     <div class="stats">
-      <div class="stat"><span class="label">Lvl</span><span id="uiLevel">1</span></div>
-      <div class="stat"><span class="label">XP</span><span id="uiXP">0</span></div>
-      <div class="stat"><span class="label">Streak</span><span id="uiStreak">0</span></div>
+      <span>Lvl <b id="level">1</b></span>
+      <span>XP <b id="xp">0</b></span>
+      <span>Streak <b id="streak">0</b></span>
     </div>
-
-    <button id="btnSettings" class="btn pill primary">Settings</button>
+    <button id="btnSettings" class="pill">Settings</button>
   </header>
 
-  <main class="container">
-    <!-- Hero / Summary -->
-    <section class="card hero">
-      <h2>Train your mind, daily.</h2>
+  <main id="home">
+    <section class="hero card">
+      <h1>Train your mind, daily.</h1>
       <p>Pick a module below. Earn XP, level up, and track streaks. Your progress is saved on your device.</p>
     </section>
 
-    <!-- Module Grid -->
     <section class="grid">
-      <button class="card module" data-module="focusTap">
-        <h3>Focus Tap</h3>
+      <button class="module card" data-module="focusTap">
+        <h2>Focus Tap</h2>
         <p>Tap the highlighted circle quickly.</p>
       </button>
 
-      <button class="card module" data-module="circleHunt">
-        <h3>Circle Hunt</h3>
+      <button class="module card" data-module="circleHunt">
+        <h2>Circle Hunt</h2>
         <p>Find the odd circle among many.</p>
       </button>
 
-      <button class="card module" data-module="visualSpan">
-        <h3>Visual Span</h3>
+      <button class="module card" data-module="visualSpan">
+        <h2>Visual Span</h2>
         <p>Repeat the flashing sequence.</p>
       </button>
 
-      <button class="card module" data-module="nBack">
-        <div class="badge">beta</div>
-        <h3>N-Back</h3>
+      <button class="module card" data-module="nBack">
+        <h2>N-Back <span class="beta">beta</span></h2>
         <p>Match current to N steps back.</p>
       </button>
 
-      <button class="card module" data-module="matrixMini">
-        <h3>Matrix Mini (IQ)</h3>
+      <button class="module card" data-module="matrixMini">
+        <h2>Matrix Mini (IQ)</h2>
         <p>Practice Raven-style pattern puzzles.</p>
       </button>
     </section>
-
-    <!-- Active Module Panel -->
-    <section id="modulePanel" class="card module-panel hidden" aria-live="polite" aria-busy="false">
-      <div class="panel-head">
-        <h2 id="moduleTitle">Module</h2>
-        <div class="head-actions">
-          <button id="btnHow" class="btn subtle">How?</button>
-          <button id="btnExit" class="btn pill">Exit</button>
-        </div>
-      </div>
-
-      <!-- Canvas area for animated games -->
-      <div class="stage-wrap">
-        <canvas id="gameCanvas" width="360" height="360" aria-label="Game canvas"></canvas>
-        <div id="overlayText" class="overlay hidden"></div>
-      </div>
-
-      <!-- Controls -->
-      <div class="controls">
-        <div class="left">
-          <button id="btnStart" class="btn primary">Start</button>
-          <button id="btnStop" class="btn">Stop</button>
-        </div>
-        <div class="right">
-          <span class="score">Score: <b id="uiScore">0</b></span>
-          <span class="score">Best: <b id="uiBest">0</b></span>
-        </div>
-      </div>
-
-      <!-- Instructions -->
-      <details id="howTo" class="how collapsed">
-        <summary>How to play</summary>
-        <div id="howInner" class="how-inner">
-          <!-- Populated dynamically per module -->
-        </div>
-      </details>
-    </section>
-
-    <!-- Footer link (for convenience) -->
-    <div class="footer-link">
-      <a id="appOrigin" href="#" target="_blank" rel="noopener">open current build</a>
-    </div>
   </main>
 
-  <!-- Settings Modal -->
-  <dialog id="settingsModal">
+  <section id="gameScreen" class="hidden">
+    <div class="card gameHeader">
+      <h2 id="gameTitle">Module</h2>
+      <div class="headerBtns">
+        <button id="btnHow" class="soft">How?</button>
+        <button id="btnExit" class="pill">Exit</button>
+      </div>
+    </div>
+
+    <div id="gameArea" class="card gameArea"></div>
+
+    <div class="card controls">
+      <button id="btnStart" class="primary">Start</button>
+      <button id="btnStop" class="soft">Stop</button>
+      <div class="scorebox">Score: <b id="score">0</b> &nbsp; Best: <b id="best">0</b></div>
+    </div>
+  </section>
+
+  <!-- Settings modal -->
+  <dialog id="dlgSettings">
     <form method="dialog" class="settings">
       <h3>Settings</h3>
 
       <label class="row">
         <span>Theme</span>
-        <select id="optTheme">
-          <option value="light">Light</option>
+        <select id="themeSelect">
           <option value="dark">Dark</option>
-          <option value="oled">OLED (pure black)</option>
-          <option value="mint">Mint</option>
-          <option value="sunset">Sunset</option>
-          <option value="quittr">Quittr-style</option>
+          <option value="light">Light</option>
+          <option value="oled">OLED Black</option>
         </select>
       </label>
 
       <label class="row">
         <span>Haptics</span>
-        <input id="optHaptics" type="checkbox" checked />
+        <input id="toggleHaptics" type="checkbox" checked>
       </label>
 
       <label class="row">
         <span>Sounds</span>
-        <input id="optSounds" type="checkbox" checked />
+        <input id="toggleSounds" type="checkbox" checked>
       </label>
 
       <label class="row">
         <span>FPS Cap</span>
-        <select id="optFPS">
+        <select id="fpsSelect">
+          <option value="60">60</option>
           <option value="30">30</option>
-          <option value="60" selected>60</option>
-          <option value="90">90</option>
         </select>
       </label>
 
-      <menu class="actions">
-        <button id="btnCloseSettings" class="btn">Close</button>
-        <button id="btnReset" class="btn danger" value="reset">Reset Progress</button>
-      </menu>
+      <div class="buttons">
+        <button id="btnReset" type="button" class="danger">Reset Progress</button>
+        <button id="btnClose" class="pill">Close</button>
+      </div>
     </form>
   </dialog>
 
-  <!-- Scripts -->
+  <script src="app.js"></script>
   <script>
-    // Lightweight SW registration (safe even on file://)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js').catch(()=>{});
       });
     }
-    // Expose origin link for debugging
-    (function () {
-      const a = document.getElementById('appOrigin');
-      try { a.href = window.location.origin; } catch(e) {}
-      a.textContent = (new URL(window.location.href)).host || 'MindGym';
-    })();
   </script>
-  <script src="app.js"></script>
 </body>
 </html>
