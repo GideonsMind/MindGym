@@ -1,86 +1,190 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+  />
+  <meta name="theme-color" content="#0f1115" />
   <title>MindGym</title>
-  <meta name="theme-color" content="#0f1316" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Styles -->
   <link rel="stylesheet" href="styles.css" />
+
+  <noscript>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+      .nojs { background:#fee; border:1px solid #f88; padding:16px; border-radius:12px; }
+    </style>
+  </noscript>
 </head>
 <body>
-  <header class="topbar">
-    <h1>MindGym</h1>
-    <div class="right">
-      <span class="mini">Lvl <b id="level">1</b></span>
-      <span class="mini">XP <b id="xp">0</b></span>
-      <span class="mini">Streak <b id="streak">0</b></span>
-      <button id="btn-settings" class="pill">Settings</button>
+  <noscript>
+    <div class="nojs">
+      MindGym needs JavaScript enabled. Please enable it in your browser settings.
     </div>
+  </noscript>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <h1>MindGym</h1>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span class="label">Lvl</span><span id="uiLevel">1</span></div>
+      <div class="stat"><span class="label">XP</span><span id="uiXP">0</span></div>
+      <div class="stat"><span class="label">Streak</span><span id="uiStreak">0</span></div>
+    </div>
+
+    <button id="btnSettings" class="btn pill primary">Settings</button>
   </header>
 
-  <main id="screen-home" class="screen">
-    <section class="hero">
+  <main class="container">
+    <!-- Hero / Summary -->
+    <section class="card hero">
       <h2>Train your mind, daily.</h2>
-      <p>Pick a module below. Earn XP, level up, and track streaks. Progress is saved on your device.</p>
+      <p>Pick a module below. Earn XP, level up, and track streaks. Your progress is saved on your device.</p>
     </section>
 
+    <!-- Module Grid -->
     <section class="grid">
-      <button class="card" id="tileFocus" data-mode="focus">
-        <h3>Focus Tap</h3><p>Tap the highlighted circle quickly.</p>
+      <button class="card module" data-module="focusTap">
+        <h3>Focus Tap</h3>
+        <p>Tap the highlighted circle quickly.</p>
       </button>
-      <button class="card" id="tileHunt" data-mode="hunt">
-        <h3>Circle Hunt</h3><p>Find the odd circle among many.</p>
+
+      <button class="card module" data-module="circleHunt">
+        <h3>Circle Hunt</h3>
+        <p>Find the odd circle among many.</p>
       </button>
-      <button class="card" id="tileSpan" data-mode="span">
-        <h3>Visual Span</h3><p>Repeat the flashing sequence.</p>
+
+      <button class="card module" data-module="visualSpan">
+        <h3>Visual Span</h3>
+        <p>Repeat the flashing sequence.</p>
+      </button>
+
+      <button class="card module" data-module="nBack">
+        <div class="badge">beta</div>
+        <h3>N-Back</h3>
+        <p>Match current to N steps back.</p>
+      </button>
+
+      <button class="card module" data-module="matrixMini">
+        <h3>Matrix Mini (IQ)</h3>
+        <p>Practice Raven-style pattern puzzles.</p>
       </button>
     </section>
+
+    <!-- Active Module Panel -->
+    <section id="modulePanel" class="card module-panel hidden" aria-live="polite" aria-busy="false">
+      <div class="panel-head">
+        <h2 id="moduleTitle">Module</h2>
+        <div class="head-actions">
+          <button id="btnHow" class="btn subtle">How?</button>
+          <button id="btnExit" class="btn pill">Exit</button>
+        </div>
+      </div>
+
+      <!-- Canvas area for animated games -->
+      <div class="stage-wrap">
+        <canvas id="gameCanvas" width="360" height="360" aria-label="Game canvas"></canvas>
+        <div id="overlayText" class="overlay hidden"></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <div class="left">
+          <button id="btnStart" class="btn primary">Start</button>
+          <button id="btnStop" class="btn">Stop</button>
+        </div>
+        <div class="right">
+          <span class="score">Score: <b id="uiScore">0</b></span>
+          <span class="score">Best: <b id="uiBest">0</b></span>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <details id="howTo" class="how collapsed">
+        <summary>How to play</summary>
+        <div id="howInner" class="how-inner">
+          <!-- Populated dynamically per module -->
+        </div>
+      </details>
+    </section>
+
+    <!-- Footer link (for convenience) -->
+    <div class="footer-link">
+      <a id="appOrigin" href="#" target="_blank" rel="noopener">open current build</a>
+    </div>
   </main>
 
-  <section id="screen-module" class="screen hidden" aria-live="polite">
-    <div class="module-header">
-      <h2 id="module-title">Module</h2>
-      <div class="actions">
-        <button id="howBtn" class="ghost">How?</button>
-        <button id="exitBtn" class="pill">Exit</button>
-      </div>
-    </div>
-    <div id="module-how" class="how hidden"></div>
-    <canvas id="gameCanvas" class="stage" width="360" height="360"></canvas>
-    <div class="hud">
-      <button id="startBtn" class="pill primary" data-start>Start</button>
-      <button id="stopBtn" class="ghost" data-stop>Stop</button>
-      <div class="score">Score: <b id="score">0</b> &nbsp; Best: <b id="best">0</b></div>
-    </div>
-  </section>
-
-  <dialog id="dlg-settings">
-    <form method="dialog" class="sheet">
+  <!-- Settings Modal -->
+  <dialog id="settingsModal">
+    <form method="dialog" class="settings">
       <h3>Settings</h3>
+
       <label class="row">
         <span>Theme</span>
-        <select id="theme">
-          <option value="dark" selected>Dark</option>
+        <select id="optTheme">
           <option value="light">Light</option>
-          <option value="amoled">AMOLED</option>
+          <option value="dark">Dark</option>
+          <option value="oled">OLED (pure black)</option>
+          <option value="mint">Mint</option>
+          <option value="sunset">Sunset</option>
+          <option value="quittr">Quittr-style</option>
         </select>
       </label>
-      <label class="row"><span>Haptics</span><input type="checkbox" id="haptics" checked /></label>
-      <label class="row"><span>Sounds</span><input type="checkbox" id="sounds" checked /></label>
+
+      <label class="row">
+        <span>Haptics</span>
+        <input id="optHaptics" type="checkbox" checked />
+      </label>
+
+      <label class="row">
+        <span>Sounds</span>
+        <input id="optSounds" type="checkbox" checked />
+      </label>
+
       <label class="row">
         <span>FPS Cap</span>
-        <select id="fps">
-          <option value="60" selected>60</option>
+        <select id="optFPS">
           <option value="30">30</option>
+          <option value="60" selected>60</option>
+          <option value="90">90</option>
         </select>
       </label>
-      <menu>
-        <button value="cancel" class="ghost">Close</button>
-        <button id="btn-reset" value="default" class="danger">Reset Progress</button>
+
+      <menu class="actions">
+        <button id="btnCloseSettings" class="btn">Close</button>
+        <button id="btnReset" class="btn danger" value="reset">Reset Progress</button>
       </menu>
     </form>
   </dialog>
 
+  <!-- Scripts -->
+  <script>
+    // Lightweight SW registration (safe even on file://)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+    // Expose origin link for debugging
+    (function () {
+      const a = document.getElementById('appOrigin');
+      try { a.href = window.location.origin; } catch(e) {}
+      a.textContent = (new URL(window.location.href)).host || 'MindGym';
+    })();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
