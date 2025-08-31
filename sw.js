@@ -1,14 +1,16 @@
-/* MindGym Service Worker
-   - Offline app shell with version awareness (reads version.json)
-   - Network-first for JS/JSON; cache-first for static assets
+/* sw.js — MindGym PWA Service Worker
+   - Offline app shell with safe precache (skips missing files)
+   - Network-first for JS/JSON; cache-first for other assets
    - Offline fallback for navigations
+   - Version-aware dynamic cache via version.json
+   - Supports SKIP_WAITING message for instant upgrades
 */
 
 const APP = 'mindgym';
-const STATIC_REV = 'v1'; // bump if you change static asset list
-let DYNAMIC_REV = 'v1';  // will be updated from version.json after install
+const STATIC_REV = 'v1'; // bump if you change the SHELL list below
+let DYNAMIC_REV = 'v1';  // updated from version.json at install
 
-// Core shell assets to precache
+// ---- Core app shell (keep these accurate) ----
 const SHELL = [
   './',
   './index.html',
@@ -18,70 +20,101 @@ const SHELL = [
   './version.json'
 ];
 
-// Optional: add icons if you have them
+// ---- Optional assets (safe: will be skipped if absent) ----
 const ICONS = [
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
 ];
 
-const OFFLINE_FALLBACK_HTML = './index.html';
+const SOUNDS = [
+  './assets/sounds/level-up.mp3',
+  './assets/sounds/click.mp3',
+  './assets/sounds/success.mp3',
+  './assets/sounds/error.mp3'
+];
 
-function staticCacheName() {
-  return `${APP}-static-${STATIC_REV}`;
-}
-function dynamicCacheName() {
-  return `${APP}-dynamic-${DYNAMIC_REV}`;
+const THEMES = [
+  './assets/themes/default.css',
+  './assets/themes/quittr.css',
+  './assets/themes/mint.css',
+  './assets/themes/sunset.css',
+  './assets/themes/oled.css'
+];
+
+const GAMES = [
+  // If you split modules later, list them here; otherwise app.js already includes them.
+  './assets/games/memory.js',
+  './assets/games/iqtest.js',
+  './assets/games/visualization.js',
+  './assets/games/nback.js'
+];
+
+function staticCacheName() { return `${APP}-static-${STATIC_REV}`; }
+function dynamicCacheName() { return `${APP}-dynamic-${DYNAMIC_REV}`; }
+
+// Safely add many URLs (skips missing/404s instead of failing the whole install)
+async function safeAddAll(cache, urls) {
+  await Promise.all(urls.map(async (u) => {
+    try {
+      const res = await fetch(u, { cache: 'no-store' });
+      if (res.ok) await cache.put(u, res.clone());
+    } catch {
+      // ignore missing or network errors during install
+    }
+  }));
 }
 
-// Install: pre-cache shell, read version.json to seed dynamic cache version
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    // Fetch version.json to set DYNAMIC_REV
+    // Try to read version.json to seed dynamic cache version
     try {
       const res = await fetch('./version.json', { cache: 'no-store' });
       if (res.ok) {
         const v = await res.json();
-        if (v && (v.version || v.build)) {
+        if (v && (v.build || v.version)) {
           DYNAMIC_REV = `v${v.build || v.version}`;
         }
       }
-    } catch (_) {
-      // keep default DYNAMIC_REV
-    }
+    } catch {/* keep default */}
 
     const cache = await caches.open(staticCacheName());
-    await cache.addAll([...SHELL, ...ICONS]);
+    // Precache core shell first
+    await safeAddAll(cache, SHELL);
+    // Then optional assets (skips missing)
+    await safeAddAll(cache, ICONS);
+    await safeAddAll(cache, SOUNDS);
+    await safeAddAll(cache, THEMES);
+    await safeAddAll(cache, GAMES);
+
     self.skipWaiting();
   })());
 });
 
-// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(
       keys.map((k) => {
         const keep = (k === staticCacheName()) || (k === dynamicCacheName());
-        if (!keep && k.startsWith(`${APP}-`)) {
-          return caches.delete(k);
-        }
+        if (!keep && k.startsWith(`${APP}-`)) return caches.delete(k);
       })
     );
     await self.clients.claim();
   })());
 });
 
-// Strategy helpers
+// ---- Strategies ----
 async function networkFirst(req) {
   try {
     const fresh = await fetch(req);
+    // put into dynamic cache
     const cache = await caches.open(dynamicCacheName());
     cache.put(req, fresh.clone());
     return fresh;
   } catch {
     const cached = await caches.match(req);
     if (cached) return cached;
-    throw new Error('NetworkFirst: no cache and network failed');
+    throw new Error('NetworkFirst failed and no cache');
   }
 }
 
@@ -94,45 +127,43 @@ async function cacheFirst(req) {
   return fresh;
 }
 
-function isNavigationRequest(e) {
-  return e.request.mode === 'navigate' ||
-         (e.request.method === 'GET' &&
-          e.request.headers.get('accept')?.includes('text/html'));
+function isNavigation(event) {
+  const req = event.request;
+  return req.mode === 'navigate' ||
+         (req.method === 'GET' && req.headers.get('accept')?.includes('text/html'));
 }
 
+// ---- Fetch routing ----
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-
-  // Ignore cross-origin fetches that aren't same-origin assets
   const sameOrigin = url.origin === self.location.origin;
 
-  // App shell navigation: try network, fall back to cached index.html
-  if (isNavigationRequest(event)) {
+  // App navigation: try network, fall back to cached index.html
+  if (isNavigation(event)) {
     event.respondWith((async () => {
       try {
-        const fresh = await fetch(event.request);
-        return fresh;
+        return await fetch(event.request);
       } catch {
-        const cachedShell = await caches.match(OFFLINE_FALLBACK_HTML);
-        return cachedShell || new Response('Offline', { status: 503 });
+        return (await caches.match('./index.html')) ||
+               new Response('Offline', { status: 503, headers:{'Content-Type':'text/plain'}});
       }
     })());
     return;
   }
 
-  // For JS & JSON: network-first (to get latest code/config)
+  // JS/JSON: network-first (get fresh code/config)
   if (sameOrigin && /\.(?:js|json)$/.test(url.pathname)) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  // Other same-origin assets (HTML/CSS/PNG/…): cache-first
+  // Everything else same-origin: cache-first
   if (sameOrigin) {
     event.respondWith(cacheFirst(event.request));
     return;
   }
 
-  // Cross-origin: try network, fall back to cache if we already have it
+  // Cross-origin: try network, fallback to cache if available
   event.respondWith((async () => {
     try {
       return await fetch(event.request);
@@ -144,20 +175,20 @@ self.addEventListener('fetch', (event) => {
   })());
 });
 
-// Listen for manual update messages from the page
-// Use from page: navigator.serviceWorker.controller.postMessage({type:'SKIP_WAITING'})
+// ---- Messages ----
+// From page: navigator.serviceWorker.controller.postMessage({type:'SKIP_WAITING'})
+// Query version: navigator.serviceWorker.controller.postMessage({type:'GET_VERSION'}, [messageChannel.port2])
 self.addEventListener('message', (event) => {
-  const { type } = event.data || {};
-  if (type === 'SKIP_WAITING') {
+  const data = event.data || {};
+  if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
-  }
-  if (type === 'GET_VERSION') {
+  } else if (data.type === 'GET_VERSION') {
     event.ports?.[0]?.postMessage({ static: STATIC_REV, dynamic: DYNAMIC_REV });
   }
 });
 
-// Optional: background sync of version.json to rotate dynamic cache earlier
-self.addEventListener('periodicsync', async (event) => {
+// (Optional) periodic sync of version.json (if enabled by page)
+self.addEventListener('periodicsync', (event) => {
   if (event.tag === 'mindgym-version-sync') {
     event.waitUntil((async () => {
       try {
@@ -166,11 +197,10 @@ self.addEventListener('periodicsync', async (event) => {
           const v = await res.json();
           const next = `v${v.build || v.version}`;
           if (next && next !== DYNAMIC_REV) {
-            DYNAMIC_REV = next;
-            // touching dynamic cache name is enough; old dynamic caches will be purged on next activate
+            DYNAMIC_REV = next; // new dynamic cache name will apply to subsequent puts
           }
         }
-      } catch { /* ignore */ }
+      } catch {/* ignore */}
     })());
   }
 });
