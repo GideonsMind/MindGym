@@ -4,40 +4,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>MindGym</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0f1316">
+  <meta name="theme-color" content="#0f1316" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
     <h1>MindGym</h1>
     <div class="right">
-      <button id="btn-stats" class="chip" aria-label="Stats">🏅</button>
+      <span class="mini">Lvl <b id="level">1</b></span>
+      <span class="mini">XP <b id="xp">0</b></span>
+      <span class="mini">Streak <b id="streak">0</b></span>
       <button id="btn-settings" class="pill">Settings</button>
     </div>
   </header>
 
   <main id="screen-home" class="screen">
     <section class="hero">
-      <div>
-        <h2>Train your mind, daily.</h2>
-        <p>Pick a module below. Earn XP, level up, and track streaks. Progress is saved on your device.</p>
-        <div class="stats"><span>Level <b id="stat-level">1</b></span><span>XP <b id="stat-xp">0</b></span><span>Streak <b id="stat-streak">0</b></span></div>
-      </div>
+      <h2>Train your mind, daily.</h2>
+      <p>Pick a module below. Earn XP, level up, and track streaks. Progress is saved on your device.</p>
     </section>
 
     <section class="grid">
-      <button class="card" data-module="focusTap">
+      <button class="card" id="tileFocus" data-mode="focus">
         <h3>Focus Tap</h3><p>Tap the highlighted circle quickly.</p>
       </button>
-      <button class="card" data-module="circleHunt">
+      <button class="card" id="tileHunt" data-mode="hunt">
         <h3>Circle Hunt</h3><p>Find the odd circle among many.</p>
       </button>
-      <button class="card" data-module="visualSpan">
-        <h3>Visual Span</h3><p>Remember the flashing sequence.</p>
-      </button>
-      <button class="card disabled" title="Coming soon">
-        <h3>N-Back (beta)</h3><p>Match current to N steps back.</p>
+      <button class="card" id="tileSpan" data-mode="span">
+        <h3>Visual Span</h3><p>Repeat the flashing sequence.</p>
       </button>
     </section>
   </main>
@@ -46,15 +41,15 @@
     <div class="module-header">
       <h2 id="module-title">Module</h2>
       <div class="actions">
-        <button id="btn-how" class="ghost">How?</button>
-        <button id="btn-exit" class="pill">Exit</button>
+        <button id="howBtn" class="ghost">How?</button>
+        <button id="exitBtn" class="pill">Exit</button>
       </div>
     </div>
     <div id="module-how" class="how hidden"></div>
-    <canvas id="stage" width="360" height="360" class="stage" aria-label="Game canvas"></canvas>
+    <canvas id="gameCanvas" class="stage" width="360" height="360"></canvas>
     <div class="hud">
-      <button id="btn-start" class="pill primary">Start</button>
-      <button id="btn-stop" class="ghost">Stop</button>
+      <button id="startBtn" class="pill primary" data-start>Start</button>
+      <button id="stopBtn" class="ghost" data-stop>Stop</button>
       <div class="score">Score: <b id="score">0</b> &nbsp; Best: <b id="best">0</b></div>
     </div>
   </section>
@@ -65,19 +60,13 @@
       <label class="row">
         <span>Theme</span>
         <select id="theme">
-          <option value="dark">Dark (default)</option>
+          <option value="dark" selected>Dark</option>
           <option value="light">Light</option>
           <option value="amoled">AMOLED</option>
         </select>
       </label>
-      <label class="row">
-        <span>Haptics</span>
-        <input type="checkbox" id="haptics" checked />
-      </label>
-      <label class="row">
-        <span>Sounds</span>
-        <input type="checkbox" id="sounds" checked />
-      </label>
+      <label class="row"><span>Haptics</span><input type="checkbox" id="haptics" checked /></label>
+      <label class="row"><span>Sounds</span><input type="checkbox" id="sounds" checked /></label>
       <label class="row">
         <span>FPS Cap</span>
         <select id="fps">
@@ -92,17 +81,6 @@
     </form>
   </dialog>
 
-  <dialog id="dlg-stats">
-    <form method="dialog" class="sheet">
-      <h3>Your Stats</h3>
-      <div class="stat-rows" id="stat-rows"></div>
-      <menu><button value="cancel" class="pill">Close</button></menu>
-    </form>
-  </dialog>
-
   <script src="app.js"></script>
-  <script>
-    if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
-  </script>
 </body>
 </html>
