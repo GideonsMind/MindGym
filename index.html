@@ -1,14 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>MindGym</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f1316">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>MindGym App</h1>
-  <p>Welcome to your upgraded brain training app!</p>
+  <header class="topbar">
+    <h1>MindGym</h1>
+    <div class="right">
+      <button id="btn-stats" class="chip" aria-label="Stats">🏅</button>
+      <button id="btn-settings" class="pill">Settings</button>
+    </div>
+  </header>
+
+  <main id="screen-home" class="screen">
+    <section class="hero">
+      <div>
+        <h2>Train your mind, daily.</h2>
+        <p>Pick a module below. Earn XP, level up, and track streaks. Progress is saved on your device.</p>
+        <div class="stats"><span>Level <b id="stat-level">1</b></span><span>XP <b id="stat-xp">0</b></span><span>Streak <b id="stat-streak">0</b></span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <button class="card" data-module="focusTap">
+        <h3>Focus Tap</h3><p>Tap the highlighted circle quickly.</p>
+      </button>
+      <button class="card" data-module="circleHunt">
+        <h3>Circle Hunt</h3><p>Find the odd circle among many.</p>
+      </button>
+      <button class="card" data-module="visualSpan">
+        <h3>Visual Span</h3><p>Remember the flashing sequence.</p>
+      </button>
+      <button class="card disabled" title="Coming soon">
+        <h3>N-Back (beta)</h3><p>Match current to N steps back.</p>
+      </button>
+    </section>
+  </main>
+
+  <section id="screen-module" class="screen hidden" aria-live="polite">
+    <div class="module-header">
+      <h2 id="module-title">Module</h2>
+      <div class="actions">
+        <button id="btn-how" class="ghost">How?</button>
+        <button id="btn-exit" class="pill">Exit</button>
+      </div>
+    </div>
+    <div id="module-how" class="how hidden"></div>
+    <canvas id="stage" width="360" height="360" class="stage" aria-label="Game canvas"></canvas>
+    <div class="hud">
+      <button id="btn-start" class="pill primary">Start</button>
+      <button id="btn-stop" class="ghost">Stop</button>
+      <div class="score">Score: <b id="score">0</b> &nbsp; Best: <b id="best">0</b></div>
+    </div>
+  </section>
+
+  <dialog id="dlg-settings">
+    <form method="dialog" class="sheet">
+      <h3>Settings</h3>
+      <label class="row">
+        <span>Theme</span>
+        <select id="theme">
+          <option value="dark">Dark (default)</option>
+          <option value="light">Light</option>
+          <option value="amoled">AMOLED</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Haptics</span>
+        <input type="checkbox" id="haptics" checked />
+      </label>
+      <label class="row">
+        <span>Sounds</span>
+        <input type="checkbox" id="sounds" checked />
+      </label>
+      <label class="row">
+        <span>FPS Cap</span>
+        <select id="fps">
+          <option value="60" selected>60</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <menu>
+        <button value="cancel" class="ghost">Close</button>
+        <button id="btn-reset" value="default" class="danger">Reset Progress</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-stats">
+    <form method="dialog" class="sheet">
+      <h3>Your Stats</h3>
+      <div class="stat-rows" id="stat-rows"></div>
+      <menu><button value="cancel" class="pill">Close</button></menu>
+    </form>
+  </dialog>
+
   <script src="app.js"></script>
+  <script>
+    if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
+  </script>
 </body>
 </html>
