@@ -1,5 +1,1 @@
-{
-  "version": "3.0.0",
-  "build": 3,
-  "notes": "Major update: expanded training games, improved UI themes, fixed sound and settings, added progression system."
-}
+{ "version": 3 }
