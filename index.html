@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>MindGym</title>
+  <meta name="theme-color" content="#0e1014" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="appbar">
+    <h1 class="brand">MindGym</h1>
+    <div class="right">
+      <span id="updateCountdown" class="pill muted">--:--:--</span>
+      <button id="openSettings" class="pill">Settings</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="screenHome">
+    <section class="card hero">
+      <div class="hero-left">
+        <h2>Train your mind, daily.</h2>
+        <p class="muted">Pick a module below. Level up with sound, haptics, and confetti. Your progress is saved locally.</p>
+      </div>
+      <div class="stats">
+        <div><div class="stat-label">Level</div><div class="stat-value" id="levelVal">1</div></div>
+        <div><div class="stat-label">XP</div><div class="stat-value" id="xpVal">0</div></div>
+        <div><div class="stat-label">Streak</div><div class="stat-value" id="streakVal">0</div></div>
+      </div>
+    </section>
+
+    <section class="grid-mods">
+      <button class="mod" data-target="focusTap">
+        <div class="mod-title">Focus Tap</div>
+        <div class="mod-sub">Tap the highlighted circle quickly.</div>
+      </button>
+      <button class="mod" data-target="circleHunt">
+        <div class="mod-title">Circle Hunt</div>
+        <div class="mod-sub">Find the odd circle among many.</div>
+      </button>
+      <button class="mod" data-target="visualSpan">
+        <div class="mod-title">Visual Span</div>
+        <div class="mod-sub">Remember the flashing sequence.</div>
+      </button>
+      <button class="mod" data-target="nback">
+        <div class="mod-title">N‑Back (beta)</div>
+        <div class="mod-sub">Match current to N steps back.</div>
+      </button>
+    </section>
+  </main>
+
+  <!-- Module Screens -->
+  <main class="wrap" id="screenModule" hidden>
+    <section class="card">
+      <div class="row between center">
+        <h2 id="moduleTitle">Module</h2>
+        <div class="row gap">
+          <button id="btnHow" class="pill ghost">How?</button>
+          <button id="btnBackHome" class="pill">Exit</button>
+        </div>
+      </div>
+      <p id="moduleDesc" class="muted small"></p>
+    </section>
+
+    <section class="card module-area">
+      <div id="moduleRoot"></div>
+    </section>
+
+    <section class="card row between center">
+      <div class="row gap">
+        <button id="btnStart" class="pill">Start</button>
+        <button id="btnStop" class="pill ghost">Stop</button>
+      </div>
+      <div class="row gap">
+        <span class="muted small">Score:</span><b id="scoreVal">0</b>
+        <span class="muted small">Best:</span><b id="bestVal">0</b>
+      </div>
+    </section>
+  </main>
+
+  <!-- Settings Drawer -->
+  <div id="backdrop" class="backdrop" hidden></div>
+  <aside id="drawer" class="drawer" hidden aria-modal="true" role="dialog">
+    <header class="drawer-head">
+      <h2>Settings</h2>
+      <button id="closeSettings" class="icon">✕</button>
+    </header>
+
+    <section class="drawer-sec">
+      <h3>General</h3>
+      <div class="grid2">
+        <label class="switch">
+          <input type="checkbox" id="sfxToggle" checked>
+          <span>Sound effects</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="hapticsToggle" checked>
+          <span>Haptics</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="confettiToggle" checked>
+          <span>Confetti</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="reducedMotion">
+          <span>Reduce motion</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="drawer-sec">
+      <h3>Themes</h3>
+      <div id="themeGrid" class="grid"></div>
+    </section>
+
+    <section class="drawer-sec">
+      <h3>Customize</h3>
+      <div class="grid2">
+        <label>Background <input type="color" id="cBg"></label>
+        <label>Surface <input type="color" id="cCard"></label>
+        <label>Text <input type="color" id="cFg"></label>
+        <label>Accent <input type="color" id="cAccent"></label>
+        <label>Subtle <input type="color" id="cMuted"></label>
+      </div>
+      <div class="row">
+        <button id="saveCustom" class="pill">Save custom</button>
+        <button id="resetCustom" class="pill ghost">Reset</button>
+      </div>
+    </section>
+
+    <section class="drawer-sec">
+      <h3>Updates</h3>
+      <p class="muted small">Next check in <b id="countdownSettings">--:--:--</b></p>
+      <div id="updateBanner" class="banner" hidden>
+        <span>New version available</span>
+        <button id="refreshApp" class="pill">Refresh</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- Confetti layer -->
+  <canvas id="confetti" class="confetti-layer" aria-hidden="true"></canvas>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
