@@ -1,115 +1,315 @@
+
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>MindGym</title>
-  <link rel="manifest" href="manifest.webmanifest?v=4">
-  <meta name="theme-color" content="#0b1220">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <style>html{background:#0b1220}</style>
-  <link rel="stylesheet" href="styles.css?v=4">
+<meta charset="utf-8">
+<title>MindGym – Single File (No Imports)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #111; --fg:#eee; --muted:#888; --accent:#4fa; --card:#1a1a1a; --border:#2a2a2a;
+    --radius: 12px;
+  }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; }
+  .mg-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; }
+  .mg-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .mg-btn { border:1px solid var(--border); background:transparent; color:var(--fg); padding:8px 10px; border-radius:8px; cursor:pointer; }
+  .mg-btn:hover { border-color:var(--accent); }
+  .mg-badge { padding:4px 8px; border-radius:999px; border:1px solid var(--border); }
+  .mg-fixed { position:fixed; right:12px; bottom:12px; width:min(380px, 92vw); z-index:999999; }
+  .mg-small { font-size:12px; color:var(--muted); }
+  .mg-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  .mg-grid { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; }
+  .mg-select { background:transparent; color:var(--fg); border:1px solid var(--border); border-radius:8px; padding:6px 8px; }
+  canvas#mg-heat { position:fixed; inset:0; pointer-events:none; z-index: 999998; }
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="dot online"></div>
-    <h1>MindGym</h1>
-    <div class="stats">
-      <span id="level">Lvl 1</span>
-      <span id="xp">XP 0</span>
-      <span id="streak">Streak 0</span>
-    </div>
-    <button id="btnSettings" class="pill">Settings</button>
-  </header>
+<canvas id="mg-heat"></canvas>
 
-  <main>
-    <section class="hero">
-      <h2>Train your mind, daily.</h2>
-      <p>Pick a module below. Earn XP, level up, and track streaks. Your progress is saved on your device.</p>
-    </section>
+<div id="mg-panel" class="mg-fixed mg-card" aria-live="polite">
+  <div class="mg-row" style="justify-content:space-between;">
+    <strong>MindGym – Single File</strong>
+    <span class="mg-badge" id="mg-status">idle</span>
+  </div>
+  <div class="mg-small" style="margin-top:4px;">Eye tracking + IQ engine + autosave + themes. No imports.</div>
 
-    <section class="grid" id="modules">
-      <button data-module="focus" class="card"> 
-        <strong>Focus Tap</strong><span>Tap the highlighted circle quickly.</span>
-      </button>
-      <button data-module="circle" class="card">
-        <strong>Circle Hunt</strong><span>Find the odd circle among many.</span>
-      </button>
-      <button data-module="span" class="card">
-        <strong>Visual Span</strong><span>Repeat the flashing sequence.</span>
-      </button>
-      <button data-module="nback" class="card">
-        <strong>N-Back beta</strong><span>Match current to N steps back.</span>
-      </button>
-      <button data-module="matrix" class="card">
-        <strong>Matrix Mini (IQ)</strong><span>Raven-style mini puzzles.</span>
-      </button>
-      <button data-module="notice60" class="card">
-        <strong>Noticing 60s</strong><span>Metacognition: notice & log fast.</span>
-      </button>
-      <button data-module="metacheck" class="card">
-        <strong>Meta-Check</strong><span>Quick self-monitor every 30s.</span>
-      </button>
-      <button data-module="microjournal" class="card">
-        <strong>Micro-Journal</strong><span>2-minute reflection with autosave.</span>
-      </button>
-    </section>
+  <div class="mg-grid" style="margin-top:10px;">
+    <span class="mg-small">Theme</span>
+    <select id="mg-theme" class="mg-select"></select>
+  </div>
 
-    <section id="panel" class="panel">
-      <div class="panel-head">
-        <h3 id="panelTitle">Module</h3>
-        <div class="actions">
-          <button class="btn" id="btnHow">How?</button>
-          <button class="btn" id="btnExit">Exit</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div id="stage"></div>
-        <div id="controls" class="controls"></div>
-        <div id="hud" class="hud">
-          <div>Score: <span id="score">0</span></div>
-          <div>Best: <span id="best">0</span></div>
-        </div>
-      </div>
-    </section>
-  </main>
+  <div class="mg-row" style="margin-top:8px;">
+    <button class="mg-btn" id="mg-eye-start">Start Eye</button>
+    <button class="mg-btn" id="mg-eye-stop">Stop Eye</button>
+    <button class="mg-btn" id="mg-clear">Clear Save</button>
+  </div>
 
-  <dialog id="dlgSettings">
-    <form method="dialog" class="settings">
-      <h4>Settings</h4>
-      <label>Theme
-        <select id="theme">
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="amoled">AMOLED</option>
-        </select>
-      </label>
-      <label class="row">
-        <input type="checkbox" id="haptics" checked> Haptics
-      </label>
-      <label class="row">
-        <input type="checkbox" id="sounds" checked> Sounds
-      </label>
-      <label>FPS Cap
-        <select id="fps">
-          <option>60</option><option>90</option><option>120</option>
-        </select>
-      </label>
-      <menu>
-        <button value="close" id="btnCloseSettings" class="pill">Close</button>
-        <button type="button" id="btnReset" class="danger">Reset Progress</button>
-      </menu>
-    </form>
-  </dialog>
+  <div class="mg-row" style="margin-top:8px;">
+    <button class="mg-btn" id="mg-rt">+ RT Trial</button>
+    <button class="mg-btn" id="mg-nb">+ nBack</button>
+    <button class="mg-btn" id="mg-ds">+ DigitSpan</button>
+    <button class="mg-btn" id="mg-st">+ Stroop</button>
+    <button class="mg-btn" id="mg-mr">+ Rot</button>
+  </div>
 
-  <script src="app.js?v=4"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try { await navigator.serviceWorker.register('sw.js?v=4'); } catch(e){ console.warn(e); }
-      });
+  <pre id="mg-report" class="mg-card mg-mono" style="margin-top:10px; max-height:30vh; overflow:auto;"></pre>
+  <div class="mg-small">Tip: paste this into your page just before <code>&lt;/body&gt;</code>. All APIs are under <code>window.MindGym</code>.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/webgazer/dist/webgazer.min.js"></script>
+<script>
+(() => {
+  // ---------- Utilities & Store (no imports) ----------
+  const KEY = "mindgym.v2.state";
+  const Store = {
+    load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) return { userId: crypto.randomUUID(), sessionId: crypto.randomUUID(), checkpoints: [], results: {} };
+        return JSON.parse(raw);
+      } catch {
+        return { userId: crypto.randomUUID(), sessionId: crypto.randomUUID(), checkpoints: [], results: {} };
+      }
+    },
+    save(state) { localStorage.setItem(KEY, JSON.stringify(state)); },
+    checkpoint(state, screen, payload) { state.checkpoints.push({ ts: Date.now(), screen, payload }); this.save(state); },
+    mergeResult(state, key, value) { state.results[key] = value; this.save(state); },
+    clear() { localStorage.removeItem(KEY); }
+  };
+
+  // ---------- Themes ----------
+  
+  const Themes = {
+    Base:   {"--bg":"#111","--fg":"#eee","--muted":"#888","--accent":"#4fa","--card":"#1a1a1a","--border":"#2a2a2a"},
+    Nebula: {"--bg":"#0b1021","--fg":"#eef2ff","--muted":"#a3b1d6","--accent":"#80d0ff","--card":"#121832","--border":"#1e2a52"},
+    Solar:  {"--bg":"#1b1200","--fg":"#ffe8b6","--muted":"#c8b890","--accent":"#ffcf6b","--card":"#2a1d00","--border":"#3a2a06"},
+    Forest: {"--bg":"#0e140f","--fg":"#e8f3ea","--muted":"#a7c2ad","--accent":"#7ee09b","--card":"#18261b","--border":"#274131"},
+    Mono:   {"--bg":"#0c0c0c","--fg":"#f2f2f2","--muted":"#a0a0a0","--accent":"#c0c0c0","--card":"#1a1a1a","--border":"#2a2a2a"},
+    Ocean:  {"--bg":"#07151c","--fg":"#e4f6ff","--muted":"#98b8c6","--accent":"#6ad1ff","--card":"#0e2330","--border":"#143547"},
+    Candy:  {"--bg":"#201016","--fg":"#ffe0ec","--muted":"#c9a3b2","--accent":"#ff8dc3","--card":"#301a22","--border":"#4a2b38"},
+    Grape:  {"--bg":"#160c1a","--fg":"#f2e8ff","--muted":"#bda8d9","--accent":"#b582ff","--card":"#23122a","--border":"#3a2145"},
+    Mint:   {"--bg":"#0f1412","--fg":"#e8fff6","--muted":"#a6cbbd","--accent":"#86f7c8","--card":"#18221d","--border":"#2a3a32"},
+    Lava:   {"--bg":"#1a0c0c","--fg":"#ffefe8","--muted":"#c9a8a1","--accent":"#ff7a6b","--card":"#2a1414","--border":"#3a1e1e"},
+    Sky:    {"--bg":"#0b1014","--fg":"#eaf6ff","--muted":"#a3bccc","--accent":"#8fd0ff","--card":"#131c24","--border":"#213142"},
+
+    /* +20 new themes */
+    Noir:      {"--bg":"#0b0b0b","--fg":"#f0f0f0","--muted":"#9a9a9a","--accent":"#9f9f9f","--card":"#151515","--border":"#262626"},
+    Desert:    {"--bg":"#1a140b","--fg":"#fde9c5","--muted":"#c9b794","--accent":"#f2c572","--card":"#241a0d","--border":"#3a2b15"},
+    Aurora:    {"--bg":"#071318","--fg":"#eafffe","--muted":"#96c4c1","--accent":"#7df5d6","--card":"#0e222a","--border":"#1c414c"},
+    Midnight:  {"--bg":"#08101a","--fg":"#e8f0ff","--muted":"#9bb0c5","--accent":"#6aa8ff","--card":"#0e1b2b","--border":"#1b2d45"},
+    Blossom:   {"--bg":"#1a1114","--fg":"#ffeaf1","--muted":"#c8a8b3","--accent":"#ff9fbd","--card":"#26171c","--border":"#3a252c"},
+    Cobalt:    {"--bg":"#0a1220","--fg":"#e9f1ff","--muted":"#a2b6d6","--accent":"#6aa0ff","--card":"#122038","--border":"#213455"},
+    Moss:      {"--bg":"#0e120e","--fg":"#eaf3ea","--muted":"#a7c4a7","--accent":"#84e084","--card":"#192219","--border":"#2a3a2a"},
+    Crimson:   {"--bg":"#1a0c0f","--fg":"#ffe9ec","--muted":"#c9a0a7","--accent":"#ff6b80","--card":"#28141a","--border":"#3a2026"},
+    Dawn:      {"--bg":"#0e1116","--fg":"#f4f7ff","--muted":"#b0bbd1","--accent":"#ffb86b","--card":"#161b24","--border":"#283041"},
+    Dusk:      {"--bg":"#0e0f14","--fg":"#eef1ff","--muted":"#a6aecd","--accent":"#a78bfa","--card":"#171a24","--border":"#272b3a"},
+    Circuit:   {"--bg":"#0a0f0d","--fg":"#e7fff6","--muted":"#9bcdbb","--accent":"#00ffaa","--card":"#13211c","--border":"#234235"},
+    Paper:     {"--bg":"#111213","--fg":"#f7f7f7","--muted":"#b9b9b9","--accent":"#8e8e8e","--card":"#1b1c1d","--border":"#2b2d2f"},
+    Velvet:    {"--bg":"#140e12","--fg":"#fff0fa","--muted":"#c8a6bf","--accent":"#ff6fd8","--card":"#1f171e","--border":"#362735"},
+    Arctic:    {"--bg":"#0b1216","--fg":"#eaffff","--muted":"#a1c4cf","--accent":"#a0f0ff","--card":"#16222a","--border":"#293f4a"},
+    Citrus:    {"--bg":"#141009","--fg":"#fff5dc","--muted":"#d0c3a0","--accent":"#ffd166","--card":"#1f190c","--border":"#372e14"},
+    Bronze:    {"--bg":"#14100c","--fg":"#fff0dc","--muted":"#c2a991","--accent":"#d59a6a","--card":"#201912","--border":"#3a2e23"},
+    Royal:     {"--bg":"#0d0f19","--fg":"#f0f2ff","--muted":"#a2a9c9","--accent":"#7c83ff","--card":"#171b2b","--border":"#2a3450"},
+    Slate:     {"--bg":"#0e1113","--fg":"#eef3f6","--muted":"#a6b2bb","--accent":"#7db2d9","--card":"#182026","--border":"#2a3a44"},
+    Bubblegum: {"--bg":"#1a1016","--fg":"#ffe9f4","--muted":"#c9a2b5","--accent":"#ff79c6","--card":"#241820","--border":"#3a2a34"},
+    Charcoal:  {"--bg":"#0d0f10","--fg":"#f2f4f5","--muted":"#9aa3a8","--accent":"#7e8a91","--card":"#171a1c","--border":"#262b2e"}
+  };
+
+  function applyTheme(vars){ Object.entries(vars).forEach(([k,v]) => document.documentElement.style.setProperty(k, v)); }
+
+  // ---------- Eye Tracking (WebGazer or mouse fallback) ----------
+  const Eye = (() => {
+    let running = false;
+    let last = null;
+    let timer = null;
+    const buffer = [];
+    const opts = { sampleHz: 30, smooth: 0.3 };
+    const heat = (() => {
+      const canvas = document.getElementById("mg-heat");
+      const ctx = canvas.getContext("2d");
+      function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+      addEventListener("resize", resize); resize();
+      function add(x, y, s=1){
+        const r = 30;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(0,0,0,${0.25*s})`);
+        g.addColorStop(1, `rgba(0,0,0,0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r*2, r*2);
+      }
+      function fade(){
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = "rgba(0,0,0,0.06)";
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.globalCompositeOperation = "source-over";
+      }
+      return { add, fade };
+    })();
+
+    function smoothStep(prev, nxt, a){
+      if (!prev) return nxt;
+      return { x: prev.x + a*(nxt.x - prev.x), y: prev.y + a*(nxt.y - prev.y), t: nxt.t };
     }
-  </script>
+
+    function start(){
+      if (running) return;
+      running = true;
+      // Use WebGazer if available
+      if (window.webgazer && typeof window.webgazer.setGazeListener === "function") {
+        window.webgazer.setGazeListener((data, clock) => {
+          if (!data) return;
+          last = smoothStep(last, {x:data.x, y:data.y, t:clock}, opts.smooth);
+        }).begin();
+      } else {
+        // Mouse fallback
+        addEventListener("mousemove", e => {
+          last = smoothStep(last, {x:e.clientX, y:e.clientY, t:performance.now()}, opts.smooth);
+        }, { passive: true });
+      }
+      const period = 1000/opts.sampleHz;
+      timer = setInterval(() => {
+        if (last) {
+          buffer.push({ x:last.x, y:last.y, t: performance.now() });
+          heat.add(last.x, last.y, 1.0);
+          heat.fade();
+        }
+      }, period);
+    }
+    function stop(){
+      running = false;
+      if (timer) { clearInterval(timer); timer = null; }
+      if (window.webgazer) window.webgazer.end();
+    }
+    function drain(){ const out = buffer.splice(0, buffer.length); return out; }
+    return { start, stop, drain, _opts:opts };
+  })();
+
+  // ---------- IQ Engine ----------
+  const IQ = (() => {
+    const state = Store.load();
+
+    function record(taskKey, trial){
+      const k = "task:" + taskKey;
+      const existing = (state.results[k] && state.results[k].trials) ? state.results[k].trials : [];
+      existing.push(trial);
+      const score = computeScore(taskKey, existing);
+      state.results[k] = { trials: existing, score };
+      Store.save(state);
+    }
+
+    function computeScore(taskKey, trials){
+      const key = (""+taskKey).toLowerCase();
+      if (key === "reaction_time") {
+        const rts = trials.filter(t => t.rt).map(t => t.rt);
+        const med = rts.sort((a,b)=>a-b)[Math.floor(rts.length/2)] ?? 1000;
+        return Math.max(0, Math.min(100, 100 * (600 - Math.min(600, Math.max(150, med))) / 450));
+      }
+      const acc = trials.filter(t => t.correct !== undefined).reduce((a,t)=>a + (t.correct?1:0), 0);
+      const n = trials.length || 1;
+      return Math.round(100 * acc / n);
+    }
+
+    function fullReport(){
+      const keys = Object.keys(state.results).filter(k => k.startsWith("task:"));
+      const tasks = keys.map(k => ({ key: k.replace("task:", ""), trials: state.results[k].trials||[], score: state.results[k].score||0 }));
+      const overall = Math.round(tasks.reduce((a,t)=>a + t.score, 0) / Math.max(1, tasks.length));
+      return { overall, tasks };
+    }
+
+    return { record, computeScore, fullReport, _state:state };
+  })();
+
+  // ---------- Link selection persistence (optional) ----------
+  function preserveSelectionOnRefresh(editorEl){
+    addEventListener("beforeunload", () => {
+      const sel = getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const r = sel.getRangeAt(0);
+      const data = { path: getXPath(r.startContainer), offset: r.startOffset };
+      sessionStorage.setItem("editor.selection", JSON.stringify(data));
+    });
+    addEventListener("DOMContentLoaded", () => {
+      try {
+        const raw = sessionStorage.getItem("editor.selection");
+        if (!raw) return;
+        const { path, offset } = JSON.parse(raw);
+        const node = resolveXPath(path);
+        if (!node) return;
+        const sel = getSelection();
+        const range = document.createRange();
+        range.setStart(node, Math.min(offset, node.textContent?.length ?? 0));
+        range.collapse(true);
+        sel.removeAllRanges(); sel.addRange(range);
+      } catch {}
+    });
+    function getXPath(node){
+      if (node === document.body) return "/html/body";
+      let n = node; let path = "";
+      for (; n && (n.nodeType === 3 ? n = n.parentNode : n); n = n.parentNode) {
+        let idx = 0, sib = n;
+        while (sib) { if (sib.nodeName === n.nodeName) idx++; sib = sib.previousSibling; }
+        path = "/" + n.nodeName + "[" + idx + "]" + path;
+        if (n === document.body) break;
+      }
+      return path.toLowerCase();
+    }
+    function resolveXPath(xpath){
+      const res = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+      const node = res.singleNodeValue;
+      if (!node) return null;
+      return node.firstChild?.nodeType === 3 ? node.firstChild : node;
+    }
+  }
+
+  // ---------- Optional mini UI for quick testing ----------
+  function mountPanel(){
+    const status = document.getElementById("mg-status");
+    const repEl = document.getElementById("mg-report");
+    function render(){
+      repEl.textContent = JSON.stringify(IQ.fullReport(), null, 2);
+    }
+    render();
+    document.getElementById("mg-eye-start").onclick = () => { Eye.start(); status.textContent = "eye: on"; };
+    document.getElementById("mg-eye-stop").onclick = () => { Eye.stop(); status.textContent = "eye: off"; };
+    document.getElementById("mg-clear").onclick = () => { Store.clear(); location.reload(); };
+
+    document.getElementById("mg-rt").onclick = () => { IQ.record("reaction_time", { rt: Math.floor(200 + Math.random()*200) }); render(); };
+    document.getElementById("mg-nb").onclick = () => { IQ.record("nback", { correct: Math.random()>0.3 }); render(); };
+    document.getElementById("mg-ds").onclick = () => { IQ.record("digit_span", { correct: Math.random()>0.4 }); render(); };
+    document.getElementById("mg-st").onclick = () => { IQ.record("stroop", { correct: Math.random()>0.2, rt: Math.floor(500+Math.random()*300) }); render(); };
+    document.getElementById("mg-mr").onclick = () => { IQ.record("mental_rotation", { correct: Math.random()>0.5, rt: Math.floor(700+Math.random()*500) }); render(); };
+
+    // Theme select
+    const sel = document.getElementById("mg-theme");
+    Object.keys(Themes).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name; opt.textContent = name; sel.appendChild(opt);
+    });
+    sel.onchange = () => { applyTheme(Themes[sel.value]); Store.mergeResult(IQ._state, "theme", sel.value); };
+    // Restore theme if saved
+    try {
+      const savedTheme = IQ._state.results["theme"];
+      if (savedTheme) { sel.value = savedTheme; applyTheme(Themes[savedTheme]); }
+    } catch {}
+  }
+
+  // ---------- Public API (global) ----------
+  window.MindGym = {
+    startEyeTracking: () => Eye.start(),
+    stopEyeTracking: () => Eye.stop(),
+    drainGaze: () => Eye.drain(),
+    mark: (task, trial) => IQ.record(task, trial),
+    report: () => IQ.fullReport(),
+    applyTheme: (name) => applyTheme(Themes[name] || Themes.Base),
+    preserveSelectionOnRefresh,
+    _debug: { Store, Themes }
+  };
+
+  // Auto-mount panel if present
+  mountPanel();
+})();
+</script>
 </body>
 </html>
