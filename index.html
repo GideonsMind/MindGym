@@ -3,120 +3,237 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#101317" />
   <title>MindGym</title>
+
+  <!-- PWA basics -->
   <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f14"/>
+
+  <!-- App icons (safe fallbacks) -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+  <!-- Styles -->
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Preload tiny blip for UI feedback -->
+  <link rel="preload" as="audio" href="assets/sounds/blip.mp3">
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">MindGym</div>
-    <div class="stats">
-      <span>Lvl <b id="level">1</b></span>
-      <span>XP <b id="xp">0</b></span>
-      <span>Streak <b id="streak">0</b></span>
+  <!-- App Shell -->
+  <header class="topbar" role="banner" aria-label="MindGym header">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <h1 class="brand-title">MindGym</h1>
     </div>
-    <button id="btnSettings" class="pill">Settings</button>
+
+    <div class="stats" aria-label="Player stats">
+      <div class="stat"><span class="label">Lvl</span> <span id="stat-level">1</span></div>
+      <div class="stat"><span class="label">XP</span> <span id="stat-xp">0</span></div>
+      <div class="stat"><span class="label">Streak</span> <span id="stat-streak">0</span></div>
+    </div>
+
+    <button id="btn-settings" class="chip chip-primary" aria-haspopup="dialog" aria-controls="settings-modal">
+      Settings
+    </button>
   </header>
 
-  <main id="home">
-    <section class="hero card">
-      <h1>Train your mind, daily.</h1>
-      <p>Pick a module below. Earn XP, level up, and track streaks. Your progress is saved on your device.</p>
+  <main id="app" class="container" role="main">
+    <!-- Dashboard card -->
+    <section class="card hero" aria-label="Daily training">
+      <h2>Train your mind, daily.</h2>
+      <p>
+        Pick a module below. Earn XP, level up, and track streaks.
+        Your progress is saved on your device.
+      </p>
     </section>
 
-    <section class="grid">
-      <button class="module card" data-module="focusTap">
-        <h2>Focus Tap</h2>
+    <!-- Module grid -->
+    <section class="grid" aria-label="Training modules">
+      <!-- Focus Tap -->
+      <article class="tile" data-module="focus">
+        <h3>Focus Tap</h3>
         <p>Tap the highlighted circle quickly.</p>
-      </button>
+        <button class="tile-start" data-start="focus" aria-label="Start Focus Tap">Open</button>
+      </article>
 
-      <button class="module card" data-module="circleHunt">
-        <h2>Circle Hunt</h2>
+      <!-- Circle Hunt -->
+      <article class="tile" data-module="hunt">
+        <h3>Circle Hunt</h3>
         <p>Find the odd circle among many.</p>
-      </button>
+        <button class="tile-start" data-start="hunt" aria-label="Start Circle Hunt">Open</button>
+      </article>
 
-      <button class="module card" data-module="visualSpan">
-        <h2>Visual Span</h2>
+      <!-- Visual Span -->
+      <article class="tile" data-module="span">
+        <h3>Visual Span</h3>
         <p>Repeat the flashing sequence.</p>
-      </button>
+        <button class="tile-start" data-start="span" aria-label="Start Visual Span">Open</button>
+      </article>
 
-      <button class="module card" data-module="nBack">
-        <h2>N-Back <span class="beta">beta</span></h2>
+      <!-- N-Back (beta) -->
+      <article class="tile" data-module="nback">
+        <h3>N-Back <span class="beta">beta</span></h3>
         <p>Match current to N steps back.</p>
-      </button>
+        <button class="tile-start" data-start="nback" aria-label="Start N-Back">Open</button>
+      </article>
 
-      <button class="module card" data-module="matrixMini">
-        <h2>Matrix Mini (IQ)</h2>
+      <!-- Matrix Mini (IQ) -->
+      <article class="tile" data-module="matrix">
+        <h3>Matrix Mini (IQ)</h3>
         <p>Practice Raven-style pattern puzzles.</p>
-      </button>
+        <button class="tile-start" data-start="matrix" aria-label="Start Matrix Mini">Open</button>
+      </article>
+    </section>
+
+    <!-- Active Module Panel -->
+    <section id="module-panel" class="card module hidden" aria-live="polite" aria-label="Active training module">
+      <header class="module-head">
+        <h2 id="module-title">Module</h2>
+        <div class="module-actions">
+          <button id="btn-how" class="btn ghost">How?</button>
+          <button id="btn-exit" class="btn">Exit</button>
+        </div>
+      </header>
+
+      <!-- Module content area -->
+      <div id="module-stage" class="module-stage" aria-label="Game board">
+        <!-- dynamic content gets injected here by app.js -->
+      </div>
+
+      <footer class="module-foot">
+        <div class="controls">
+          <button id="btn-start" class="btn primary">Start</button>
+          <button id="btn-stop" class="btn">Stop</button>
+        </div>
+        <div class="scoreline">
+          <span>Score: <strong id="score">0</strong></span>
+          <span>Best: <strong id="best">0</strong></span>
+        </div>
+      </footer>
     </section>
   </main>
 
-  <section id="gameScreen" class="hidden">
-    <div class="card gameHeader">
-      <h2 id="gameTitle">Module</h2>
-      <div class="headerBtns">
-        <button id="btnHow" class="soft">How?</button>
-        <button id="btnExit" class="pill">Exit</button>
+  <!-- Settings Modal -->
+  <dialog id="settings-modal" class="modal" aria-labelledby="settings-title">
+    <form method="dialog" class="modal-card">
+      <header class="modal-head">
+        <h2 id="settings-title">Settings</h2>
+      </header>
+
+      <div class="modal-body">
+        <label class="row">
+          <span>Theme</span>
+          <select id="theme-select">
+            <option value="system">System</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="quitt">Quitt-style</option>
+            <option value="neon">Neon</option>
+            <option value="pastel">Pastel</option>
+          </select>
+        </label>
+
+        <label class="row">
+          <span>Haptics</span>
+          <input id="opt-haptics" type="checkbox" checked>
+        </label>
+
+        <label class="row">
+          <span>Sounds</span>
+          <input id="opt-sound" type="checkbox" checked>
+        </label>
+
+        <label class="row">
+          <span>FPS Cap</span>
+          <select id="fps-cap">
+            <option value="30">30</option>
+            <option value="60" selected>60</option>
+          </select>
+        </label>
+
+        <hr class="sep" />
+
+        <div class="row">
+          <button id="btn-reset" type="button" class="btn danger">Reset Progress</button>
+        </div>
       </div>
-    </div>
 
-    <div id="gameArea" class="card gameArea"></div>
-
-    <div class="card controls">
-      <button id="btnStart" class="primary">Start</button>
-      <button id="btnStop" class="soft">Stop</button>
-      <div class="scorebox">Score: <b id="score">0</b> &nbsp; Best: <b id="best">0</b></div>
-    </div>
-  </section>
-
-  <!-- Settings modal -->
-  <dialog id="dlgSettings">
-    <form method="dialog" class="settings">
-      <h3>Settings</h3>
-
-      <label class="row">
-        <span>Theme</span>
-        <select id="themeSelect">
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="oled">OLED Black</option>
-        </select>
-      </label>
-
-      <label class="row">
-        <span>Haptics</span>
-        <input id="toggleHaptics" type="checkbox" checked>
-      </label>
-
-      <label class="row">
-        <span>Sounds</span>
-        <input id="toggleSounds" type="checkbox" checked>
-      </label>
-
-      <label class="row">
-        <span>FPS Cap</span>
-        <select id="fpsSelect">
-          <option value="60">60</option>
-          <option value="30">30</option>
-        </select>
-      </label>
-
-      <div class="buttons">
-        <button id="btnReset" type="button" class="danger">Reset Progress</button>
-        <button id="btnClose" class="pill">Close</button>
-      </div>
+      <footer class="modal-foot">
+        <button class="btn">Close</button>
+      </footer>
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <!-- Hidden assets -->
+  <audio id="sfx-blip" preload="auto">
+    <source src="assets/sounds/blip.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="sfx-good" preload="auto">
+    <source src="assets/sounds/good.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="sfx-bad" preload="auto">
+    <source src="assets/sounds/bad.mp3" type="audio/mpeg" />
+  </audio>
+  <!-- END PART 1/3 -->  <!-- Tutorial / Info Sheets -->
+  <section id="tutorial" class="card tutorial hidden" aria-label="Tutorial info">
+    <header>
+      <h2 id="tutorial-title">How to Play</h2>
+    </header>
+    <div id="tutorial-body" class="tutorial-body">
+      <!-- dynamic tutorial text injected -->
+    </div>
+    <footer>
+      <button id="btn-tutorial-close" class="btn">Close</button>
+    </footer>
+  </section>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Loading Screen -->
+  <div id="loading" class="loading hidden" role="alert" aria-busy="true">
+    <span class="spinner"></span>
+    <p>Loading…</p>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js" defer></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(()=>{});
+    // Service Worker registration
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("sw.js")
+          .then(reg => console.log("SW registered:", reg.scope))
+          .catch(err => console.warn("SW failed:", err));
       });
     }
   </script>
 </body>
 </html>
+<!-- END PART 2/3 -->
+     <!-- Footer -->
+    <footer>
+      <p>&copy; 2025 MindGym. Train your mind, unlock your potential.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+
+    <!-- Register Service Worker -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then(reg => console.log("Service Worker registered:", reg.scope))
+            .catch(err => console.error("Service Worker failed:", err));
+        });
+      }
+    </script>
+  </body>
+</html> 
+  
