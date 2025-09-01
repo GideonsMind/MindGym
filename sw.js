@@ -204,3 +204,50 @@ self.addEventListener('periodicsync', (event) => {
     })());
   }
 });
+// sw.js - Service Worker for MindGym
+const CACHE_NAME = "mindgym-cache-v3"; // bump version when you change code
+const ASSETS_TO_CACHE = [
+  "/",
+  "/index.html",
+  "/style.css",
+  "/app.js",
+  "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png"
+];
+
+// Install Event
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Activate Event - clean old caches
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// Fetch Event - serve cached, fallback to network
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return (
+        response ||
+        fetch(event.request).catch(() =>
+          caches.match("/index.html")
+        )
+      );
+    })
+  );
+});
