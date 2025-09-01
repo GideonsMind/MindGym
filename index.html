@@ -2,114 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
   <title>MindGym</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0b0f14"/>
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-  <link rel="stylesheet" href="styles.css"/>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest?v=3" />
+  <meta name="theme-color" content="#0b0f14" />
+
+  <!-- Icons (fine if some are missing; add later) -->
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png" sizes="180x180" />
+
+  <!-- Main stylesheet (cache-busted) -->
+  <link rel="stylesheet" href="styles.css?v=3" />
+
+  <!-- Critical fallback styles so the layout doesn’t break even if CSS is stale -->
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121826; --muted:#a6b3c5; --text:#e9f0fb;
+      --accent:#35d993; --pill:#1e2740; --shadow:0 10px 30px rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      background:radial-gradient(1200px 600px at 50% -200px,#13202c 0,#0b0f14 60%);
+      font:500 16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial
+    }
+    .container{max-width:980px;margin:0 auto;padding:20px}
+    .header{display:flex;align-items:center;gap:14px}
+    .brand{font-weight:800;font-size:28px;letter-spacing:.4px}
+    .hud{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:var(--pill);
+      padding:6px 12px;border-radius:999px;box-shadow:var(--shadow);font-weight:700}
+    .settings-btn{background:var(--accent);color:#031a11;border:none;
+      padding:10px 18px;border-radius:16px;font-weight:800}
+    .hero{background:var(--card);padding:22px;border-radius:20px;
+      box-shadow:var(--shadow);margin:18px 0}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+    .card{background:#e7ebf2;color:#0b1320;border:none;border-radius:16px;padding:18px;
+      text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer}
+    .card h3{margin:0 0 6px;font-size:22px}
+    .panel{background:var(--card);border-radius:20px;box-shadow:var(--shadow);
+      margin-top:18px;padding:16px}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .hidden{display:none!important}
+    footer{opacity:.55;text-align:center;padding:28px 8px}
+    @media (prefers-color-scheme: light){
+      body{background:#f7fafc;color:#101322}
+      .card{background:#fff;color:#0b1320}
+    }
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="dot"></span>MindGym</div>
-    <div class="stats">
-      <span id="lvl">Lvl 1</span>
-      <span id="xp">XP 0</span>
-      <span id="streak">Streak 0</span>
-    </div>
-    <button id="btnSettings" class="pill">Settings</button>
-  </header>
+  <div class="container">
+    <header class="header">
+      <div class="brand">● MindGym</div>
+      <div class="hud">
+        <div class="badge">Lvl <span id="hud-level">1</span></div>
+        <div class="badge">XP <span id="hud-xp">0</span></div>
+        <div class="badge">Streak <span id="hud-streak">0</span></div>
+        <button id="open-settings" class="settings-btn">Settings</button>
+      </div>
+    </header>
 
-  <main class="container">
-    <section class="hero card">
+    <section class="hero">
       <h1>Train your mind, daily.</h1>
       <p>Pick a module below. Earn XP, level up, and track streaks. Your progress is saved on your device.</p>
     </section>
 
-    <section class="grid">
-      <button class="tile" data-module="focus"><div class="title">Focus Tap</div><div class="sub">Tap the highlighted circle quickly.</div></button>
-      <button class="tile" data-module="hunt"><div class="title">Circle Hunt</div><div class="sub">Find the odd circle among many.</div></button>
-      <button class="tile" data-module="span"><div class="title">Visual Span</div><div class="sub">Repeat the flashing sequence.</div></button>
-      <button class="tile" data-module="nback"><div class="title">N-Back <span class="beta">beta</span></div><div class="sub">Match current to N steps back.</div></button>
-      <button class="tile" data-module="matrix"><div class="title">Matrix Mini (IQ)</div><div class="sub">Raven-style mini puzzles.</div></button>
-      <button class="tile" data-module="noticing"><div class="title">Noticing 60s</div><div class="sub">Metacognition: notice & log fast.</div></button>
-      <button class="tile" data-module="metacheck"><div class="title">Meta-Check</div><div class="sub">Quick self-monitor every 30s.</div></button>
-      <button class="tile" data-module="journal"><div class="title">Micro-Journal</div><div class="sub">2-minute reflection with autosave.</div></button>
+    <!-- MODULE GRID -->
+    <section class="grid" id="module-grid">
+      <button class="card" id="btn-focus">
+        <h3>Focus Tap</h3><div>Tap the highlighted circle quickly.</div>
+      </button>
+      <button class="card" id="btn-circle">
+        <h3>Circle Hunt</h3><div>Find the odd circle among many.</div>
+      </button>
+      <button class="card" id="btn-span">
+        <h3>Visual Span</h3><div>Repeat the flashing sequence.</div>
+      </button>
+      <button class="card" id="btn-nback">
+        <h3>N-Back <small>beta</small></h3><div>Match current to N steps back.</div>
+      </button>
+      <button class="card" id="btn-matrix">
+        <h3>Matrix Mini (IQ)</h3><div>Raven-style mini puzzles.</div>
+      </button>
+      <button class="card" id="btn-noticing">
+        <h3>Noticing 60s</h3><div>Metacognition: notice & log fast.</div>
+      </button>
+      <button class="card" id="btn-metacheck">
+        <h3>Meta-Check</h3><div>Quick self-monitor every 30s.</div>
+      </button>
+      <button class="card" id="btn-journal">
+        <h3>Micro-Journal</h3><div>2-minute reflection with autosave.</div>
+      </button>
     </section>
 
-    <section id="module" class="module card hidden">
-      <div class="moduleHeader">
-        <h2 id="moduleTitle">Module</h2>
-        <div class="moduleControls">
-          <button id="btnHow" class="btn ghost">How?</button>
-          <button id="btnExit" class="btn">Exit</button>
+    <!-- MODULE PANEL (single instance; JS shows/hides & fills) -->
+    <section id="module-panel" class="panel hidden" aria-live="polite">
+      <div class="panel-header">
+        <h2 id="panel-title">Module</h2>
+        <div class="toolbar">
+          <button id="panel-how"  class="badge">How?</button>
+          <button id="panel-exit" class="badge">Exit</button>
         </div>
       </div>
-      <div id="stage"></div>
-      <div id="hud">
-        <div id="hudLeft">
-          <button id="btnStart" class="btn primary">Start</button>
-          <button id="btnStop" class="btn">Stop</button>
-        </div>
-        <div id="hudRight">
-          <span>Score: <b id="score">0</b></span>
-          <span>Best: <b id="best">0</b></span>
-        </div>
+      <div id="game-root" style="min-height:320px;"></div>
+      <div class="toolbar" style="margin-top:14px">
+        <button id="btn-start" class="settings-btn">Start</button>
+        <button id="btn-stop"  class="badge">Stop</button>
+        <div class="badge">Score: <span id="score">0</span></div>
+        <div class="badge">Best: <span id="best">0</span></div>
       </div>
     </section>
-  </main>
 
-  <dialog id="settings">
-    <form method="dialog" class="sheet">
-      <h3>Settings</h3>
-      <label class="row">Theme
-        <select id="theme">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="neon">Neon</option>
-          <option value="pastel">Pastel</option>
-          <option value="quittr">Quittr-style</option>
-        </select>
-      </label>
-      <label class="row">
-        <span>Haptics</span>
-        <input type="checkbox" id="haptics" checked />
-      </label>
-      <label class="row">
-        <span>Sounds</span>
-        <input type="checkbox" id="sounds" checked />
-      </label>
-      <label class="row">
-        <span>FPS Cap</span>
-        <select id="fps">
-          <option>30</option>
-          <option selected>60</option>
-          <option>90</option>
-        </select>
-      </label>
-      <menu>
-        <button id="btnReset" class="danger" type="button">Reset Progress</button>
-        <button value="close" class="primary">Close</button>
-      </menu>
-    </form>
-  </dialog>
+    <footer>v<span id="app-version">3</span></footer>
+  </div>
 
-  <section id="tutorial" class="card tutorial hidden">
-    <header><h2 id="tTitle">How to Play</h2></header>
-    <div id="tBody" class="tutorial-body"></div>
-    <footer><button id="btnTutClose" class="btn">Close</button></footer>
-  </section>
+  <!-- Settings modal hook; real content injected from app.js -->
+  <div id="settings-modal" class="hidden" role="dialog" aria-modal="true"></div>
 
-  <div id="toast"></div>
-
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
   <script>
-    if('serviceWorker' in navigator){
-      window.addEventListener('load', ()=>{
-        navigator.serviceWorker.register('sw.js').catch(console.warn);
+    // Safe SW registration with cache-bust
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
       });
     }
   </script>
