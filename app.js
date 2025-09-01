@@ -1,429 +1,272 @@
+// MindGym – stable build v4
+(() => {
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const state = {
+    version: 4,
+    xp: 0, level: 1, streak: 0,
+    theme: 'dark', haptics: true, sounds: true, fps: 60,
+    best: {focus:0, circle:0, span:0, nback:0, matrix:0},
+    lastPlayed: null
+  };
 
-// MindGym App Logic
-const VERSION = 4;
-const KEY = 'mindgym-state-v' + VERSION;
-const defaultState = {
-  xp:0, lvl:1, streak:0, lastOpen: new Date().toISOString(),
-  best: {focus:0, span:0, hunt:0, nback:0, matrix:0, noticing:0},
-  settings: { theme:'system', haptics:true, sounds:true, fps:60 },
-  journalDraft: ''
-};
-
-function loadState(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(!raw){
-      // migrate older
-      const olderKey = Object.keys(localStorage).find(k=>k.startsWith('mindgym-state-v'));
-      if(olderKey){ return JSON.parse(localStorage.getItem(olderKey)); }
-      return {...defaultState};
-    }
-    const s = JSON.parse(raw);
-    return {...defaultState, ...s, best:{...defaultState.best, ...(s.best||{})}, settings:{...defaultState.settings, ...(s.settings||{})} };
-  }catch(e){ console.warn('state load',e); return {...defaultState}; }
-}
-function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); refreshHeader(); }
-let state = loadState();
-
-// streak daily bump
-(function bumpStreak(){
-  const last = new Date(state.lastOpen).toDateString();
-  const now = new Date().toDateString();
-  if(last !== now){
-    const diff = (new Date(now) - new Date(last)) / (1000*3600*24);
-    state.streak = (diff<=2) ? (state.streak + 1) : 0;
-    state.lastOpen = new Date().toISOString();
-    saveState();
+  const storageKey = 'mindgym:v4';
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      Object.assign(state, saved);
+    } catch(e){ console.warn(e); }
   }
-})();
+  function save() { localStorage.setItem(storageKey, JSON.stringify(state)); }
+  load();
 
-function addXP(amount=10){
-  state.xp += amount;
-  const needed = 100 + (state.lvl-1)*25;
-  if(state.xp >= needed){ state.xp -= needed; state.lvl++; toast(`Level Up! Lvl ${state.lvl}`); ping('level'); }
-  saveState();
-}
+  const panel = $('#panel'), stage = $('#stage'), controls = $('#controls');
+  const scoreEl = $('#score'), bestEl = $('#best');
+  const levelEl = $('#level'), xpEl = $('#xp'), streakEl = $('#streak');
 
-function refreshHeader(){
-  document.getElementById('lvl').textContent = `Lvl ${state.lvl}`;
-  document.getElementById('xp').textContent = `XP ${state.xp}`;
-  document.getElementById('streak').textContent = `Streak ${state.streak}`;
-}
-refreshHeader();
+  function applyTheme() {
+    document.documentElement.classList.toggle('theme-light', state.theme==='light');
+    document.documentElement.classList.toggle('theme-amoled', state.theme==='amoled');
+  }
+  function renderStats(){
+    levelEl.textContent = `Lvl ${state.level}`;
+    xpEl.textContent = `XP ${state.xp}`;
+    streakEl.textContent = `Streak ${state.streak}`;
+  }
+  applyTheme(); renderStats();
 
-// settings
-const settingsDialog = document.getElementById('settings');
-document.getElementById('btnSettings').addEventListener('click', ()=>settingsDialog.showModal());
-['theme','haptics','sounds','fps'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(!el) return;
-  if(id==='theme') el.value = state.settings.theme;
-  if(id==='haptics') el.checked = state.settings.haptics;
-  if(id==='sounds') el.checked = state.settings.sounds;
-  if(id==='fps') el.value = state.settings.fps;
-});
-document.getElementById('theme').addEventListener('change', e => { state.settings.theme = e.target.value; applyTheme(e.target.value); saveState(); });
-document.getElementById('haptics').addEventListener('change', e => { state.settings.haptics = e.target.checked; saveState(); });
-document.getElementById('sounds').addEventListener('change', e => { state.settings.sounds = e.target.checked; saveState(); });
-document.getElementById('fps').addEventListener('change', e => { state.settings.fps = parseInt(e.target.value,10); saveState(); });
-document.getElementById('btnReset').addEventListener('click', ()=>{
-  if(confirm('Reset all progress?')){ state = {...defaultState}; saveState(); location.reload(); }
-});
-applyTheme(state.settings.theme);
-
-function applyTheme(t){
-  let target = 'dark';
-  if(t==='light') target='light';
-  else if(t==='system'){
-    target = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }else if(t==='neon') target='neon';
-  else if(t==='pastel') target='pastel';
-  else if(t==='quittr') target='quittr';
-  document.documentElement.setAttribute('data-theme', target);
-}
-
-function toast(msg){
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 1500);
-}
-
-function ping(type='beep'){
-  if(state.settings.haptics && 'vibrate' in navigator){ navigator.vibrate(type==='level' ? 60 : 20); }
-  if(state.settings.sounds){ tone(type==='level'? 880: 440, 0.08); }
-}
-function tone(freq=440, duration=0.05){
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if(!AC) return;
-  if(!window._ctx) window._ctx = new AC();
-  const o = _ctx.createOscillator();
-  const g = _ctx.createGain();
-  o.type='sine'; o.frequency.value=freq;
-  o.connect(g); g.connect(_ctx.destination);
-  g.gain.setValueAtTime(0.0001, _ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.25, _ctx.currentTime + 0.004);
-  g.gain.exponentialRampToValueAtTime(0.0001, _ctx.currentTime + duration);
-  o.start(); o.stop(_ctx.currentTime + duration + 0.01);
-}
-
-// UI
-const moduleSec = document.getElementById('module');
-const titleEl = document.getElementById('moduleTitle');
-const stage = document.getElementById('stage');
-const scoreEl = document.getElementById('score');
-const bestEl = document.getElementById('best');
-const btnStart = document.getElementById('btnStart');
-const btnStop = document.getElementById('btnStop');
-const btnExit = document.getElementById('btnExit');
-const btnHow = document.getElementById('btnHow');
-const btnTutClose = document.getElementById('btnTutClose');
-const tutCard = document.getElementById('tutorial');
-const tTitle = document.getElementById('tTitle');
-const tBody = document.getElementById('tBody');
-
-let active = null;
-function setScore(n){ scoreEl.textContent = n; }
-function setBest(key, n){ state.best[key] = Math.max(state.best[key]||0, n); bestEl.textContent = state.best[key]; saveState(); }
-
-// open module
-document.querySelectorAll('.tile').forEach(b=>{
-  b.addEventListener('click', ()=>{
-    const mod = b.getAttribute('data-module');
-    openModule(mod);
+  const dlg = $('#dlgSettings');
+  $('#btnSettings').addEventListener('click', () => {
+    $('#theme').value = state.theme;
+    $('#haptics').checked = state.haptics;
+    $('#sounds').checked = state.sounds;
+    $('#fps').value = String(state.fps);
+    dlg.showModal();
   });
-});
+  $('#btnCloseSettings').addEventListener('click', () => dlg.close());
+  $('#btnReset').addEventListener('click', () => {
+    localStorage.removeItem(storageKey);
+    location.reload();
+  });
+  $('#theme').addEventListener('change', e => { state.theme = e.target.value; applyTheme(); save(); });
+  $('#haptics').addEventListener('change', e => { state.haptics = e.target.checked; save(); });
+  $('#sounds').addEventListener('change', e => { state.sounds = e.target.checked; save(); });
+  $('#fps').addEventListener('change', e => { state.fps = +e.target.value; save(); });
 
-function openModule(id){
-  moduleSec.classList.remove('hidden');
-  stage.innerHTML = '';
-  setScore(0);
-  bestEl.textContent = state.best[id]||0;
-  let init = modules[id];
-  titleEl.textContent = moduleNames[id] || 'Module';
-  active = init ? init() : null;
-}
-
-btnExit.addEventListener('click', ()=>{
-  if(active && active.stop) active.stop();
-  moduleSec.classList.add('hidden');
-  stage.innerHTML='';
-});
-
-btnStart.addEventListener('click', ()=>{ if(active && active.start) active.start(); });
-btnStop .addEventListener('click', ()=>{ if(active && active.stop) active.stop(); });
-btnHow  .addEventListener('click', ()=>{
-  tTitle.textContent = 'How to Play';
-  tBody.innerHTML = active && active.how ? active.how : 'Tap Start to begin.';
-  tutCard.classList.remove('hidden');
-});
-btnTutClose.addEventListener('click', ()=>tutCard.classList.add('hidden'));
-
-// modules
-const moduleNames = {
-  focus: 'Focus Tap',
-  hunt: 'Circle Hunt',
-  span: 'Visual Span',
-  nback: 'N-Back (beta)',
-  matrix: 'Matrix Mini (IQ)',
-  noticing: 'Noticing 60s',
-  metacheck: 'Meta-Check',
-  journal: 'Micro-Journal'
-};
-const modules = {};
-
-// Focus Tap
-modules.focus = function(){
-  let running=false, score=0, timer=null, target=null, timeWindow=1200, grid=16;
-  function draw(){
-    stage.innerHTML='';
-    const wrap = document.createElement('div');
-    wrap.style.display='grid';
-    wrap.style.gridTemplateColumns='repeat(4,1fr)';
-    wrap.style.gap='10px';
-    for(let i=0;i<grid;i++){
-      const d=document.createElement('div');
-      d.className='cell';
-      d.style.borderRadius='50%';
-      d.textContent='';
-      d.addEventListener('click', ()=>{
-        if(!running) return;
-        if(i===target){ score++; setScore(score); addXP(3); ping(); next(); }
-        else { d.classList.add('bad'); setTimeout(()=>d.classList.remove('bad'), 250); score=Math.max(0,score-1); setScore(score); ping(); }
-      });
-      wrap.appendChild(d);
-    }
-    stage.appendChild(wrap);
+  // Audio
+  let ctx;
+  function beep(ms=80, freq=880){
+    if(!state.sounds) return;
+    try{
+      ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.value = 0.06;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      setTimeout(() => { osc.stop(); }, ms);
+    }catch(e){}
   }
-  function next(){
-    const cells = [...stage.querySelectorAll('.cell')];
-    cells.forEach(c=>c.classList.remove('highlight'));
-    target = Math.floor(Math.random()*cells.length);
-    cells[target].classList.add('highlight');
-    clearTimeout(timer);
-    timer = setTimeout(()=>{ // miss
-      if(!running) return;
-      score = Math.max(0, score-1);
-      setScore(score);
-      next();
-    }, timeWindow);
-    timeWindow = Math.max(500, timeWindow - 10); // harder
-    setBest('focus', score);
-  }
-  function start(){ if(running) return; running=true; score=0; setScore(0); timeWindow=1200; draw(); next(); }
-  function stop(){ running=false; clearTimeout(timer); setBest('focus', score); }
-  return {start, stop, how:`Tap the highlighted circle before time runs out. It speeds up as you score.`};
-};
+  function haptic() { if(state.haptics && 'vibrate' in navigator) navigator.vibrate(18); }
 
-// Circle Hunt
-modules.hunt = function(){
-  let running=false, score=0, n=12;
-  function drawRound(){
-    stage.innerHTML='';
-    const wrap = document.createElement('div');
-    wrap.style.display='grid';
-    wrap.style.gridTemplateColumns='repeat(6,1fr)';
-    wrap.style.gap='10px';
-    const oddIndex = Math.floor(Math.random()*n);
-    const base = Math.floor(Math.random()*180)+40;
-    for(let i=0;i<n;i++){
-      const d = document.createElement('div');
-      d.className='cell';
-      d.style.borderRadius='50%';
-      const size = i===oddIndex ? base+6 : base;
-      d.style.width = d.style.height = size+'px';
-      d.style.margin='0 auto';
-      d.addEventListener('click', ()=>{
-        if(!running) return;
-        if(i===oddIndex){ score++; setScore(score); addXP(4); n = Math.min(36, n+1); ping(); drawRound(); }
-        else { score=Math.max(0,score-1); setScore(score); ping(); }
-        setBest('hunt', score);
-      });
-      wrap.appendChild(d);
-    }
-    stage.appendChild(wrap);
-  }
-  function start(){ running=true; score=0; n=12; setScore(0); drawRound(); }
-  function stop(){ running=false; setBest('hunt', score); }
-  return {start, stop, how:`Find the one circle that looks slightly different (size). It gets trickier each round.`};
-};
+  function showPanel(title) { $('#panelTitle').textContent = title; panel.style.display = 'block'; }
+  function hidePanel() { panel.style.display = 'none'; }
+  $('#btnExit').addEventListener('click', hidePanel);
+  $('#btnHow').addEventListener('click', () => alert($('#panelTitle').textContent + ' – quick instructions are shown inside the module.'));
 
-// Visual Span (3x3)
-modules.span = function(){
-  let running=false, score=0, seq=[], input=[], len=3, flashTimer=null;
-  const grid = document.createElement('div');
-  grid.className = 'grid9';
-  for(let i=0;i<9;i++){
-    const c = document.createElement('button');
-    c.className='cell';
-    c.addEventListener('click', ()=>{
-      if(!running) return;
-      input.push(i);
-      c.classList.add('highlight');
-      setTimeout(()=>c.classList.remove('highlight'),150);
-      if(input.length===seq.length){
-        // check
-        const ok = input.every((v,idx)=>v===seq[idx]);
-        if(ok){ score++; setScore(score); addXP(5); len++; next(); ping(); }
-        else { score=0; setScore(score); len=3; next(); ping(); }
-        setBest('span', score);
-      }
-    });
-    grid.appendChild(c);
+  function updateScore(score, key) {
+    scoreEl.textContent = score;
+    if(score > (state.best[key]||0)) { state.best[key]=score; bestEl.textContent = score; save(); }
+    else bestEl.textContent = state.best[key]||0;
   }
-  function showSeq(){
-    const cells = [...grid.children];
-    let k=0;
-    function flash(){
-      if(k>=seq.length){ return; }
-      const idx = seq[k++];
-      cells[idx].classList.add('highlight');
-      setTimeout(()=>cells[idx].classList.remove('highlight'), 350);
-      flashTimer = setTimeout(flash, 420);
-    }
-    flash();
-  }
-  function next(){
-    input=[]; seq=[];
-    while(seq.length<len){
-      const r = Math.floor(Math.random()*9);
-      if(seq[seq.length-1]!==r) seq.push(r);
-    }
-    stage.innerHTML='';
+
+  $('#modules').addEventListener('click', e => {
+    const btn = e.target.closest('[data-module]');
+    if(!btn) return;
+    const mod = btn.dataset.module;
+    ({
+      focus:modFocus, circle:modCircle, span:modSpan, nback:modNBack,
+      matrix:modMatrix, notice60:modNotice, metacheck:modCheck, microjournal:modJournal
+    }[mod])?.();
+  });
+
+  // Focus Tap
+  function modFocus(){
+    showPanel('Focus Tap'); stage.innerHTML=''; controls.innerHTML='';
+    const grid = document.createElement('div'); grid.className='grid-3';
+    const cells = Array.from({length:12}, ()=>{ const c=document.createElement('div'); c.className='cell'; grid.appendChild(c); return c; });
     stage.appendChild(grid);
-    showSeq();
+    const start = button('Start'), stop = button('Stop'); controls.append(start, stop);
+    let alive=false, score=0, hot=-1, timer;
+    function tick(){
+      cells.forEach(c=>c.className='cell');
+      hot = Math.floor(Math.random()*cells.length);
+      cells[hot].classList.add('hot'); beep(60,900);
+      timer = setTimeout(tick, 1000/(state.fps/60));
+    }
+    cells.forEach((c,i)=>c.addEventListener('click', ()=>{
+      if(!alive) return;
+      if(i===hot){ score++; haptic(); beep(40,1200); updateScore(score,'focus'); }
+      else { c.classList.add('bad'); score=Math.max(0,score-1); beep(90,330); updateScore(score,'focus'); }
+    }));
+    start.addEventListener('click', ()=>{ if(alive) return; alive=true; score=0; updateScore(0,'focus'); tick(); });
+    stop.addEventListener('click', ()=>{ alive=false; clearTimeout(timer); cells.forEach(c=>c.className='cell'); });
+    updateScore(0,'focus');
   }
-  function start(){ running=true; score=0; len=3; setScore(0); next(); }
-  function stop(){ running=false; clearTimeout(flashTimer); setBest('span', score); }
-  return {start, stop, how:`Watch the cells flash in sequence, then tap them in the same order.`};
-};
 
-// N-Back (letters)
-modules.nback = function(){
-  let running=false, score=0, N=1, streamTimer=null, hist=[];
-  const wrap = document.createElement('div');
-  wrap.style.display='grid'; wrap.style.placeItems='center'; wrap.style.gap='10px';
-  const big = document.createElement('div'); big.style.fontSize='72px'; big.style.fontWeight='800';
-  const controls = document.createElement('div');
-  const matchBtn = document.createElement('button'); matchBtn.className='btn primary'; matchBtn.textContent='Match';
-  const nsel = document.createElement('select');
-  [1,2,3].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.text=v+'-back'; if(v===1) o.selected=true; nsel.appendChild(o); });
-  controls.appendChild(matchBtn); controls.appendChild(nsel);
-  wrap.appendChild(big); wrap.appendChild(controls);
-  stage.innerHTML=''; stage.appendChild(wrap);
-
-  function nextLetter(){
-    const letters = "BCDFGHJKLMNPQRSTVWXYZ";
-    const ch = letters[Math.floor(Math.random()*letters.length)];
-    big.textContent = ch;
-    hist.push(ch);
-    if(hist.length>10) hist.shift();
+  // Circle Hunt
+  function modCircle(){
+    showPanel('Circle Hunt'); stage.innerHTML=''; controls.innerHTML='';
+    const grid = document.createElement('div'); grid.className='grid-3';
+    stage.appendChild(grid);
+    const start = button('Start'), stop = button('Stop'); controls.append(start, stop);
+    let score=0, alive=false;
+    function round(){
+      grid.innerHTML='';
+      const base = Math.floor(Math.random()*200)+30;
+      const odd = (base+30)%360;
+      const oddIndex = Math.floor(Math.random()*9);
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div'); cell.className='cell'; 
+        const hue = i===oddIndex? odd: base;
+        cell.style.background = `hsl(${hue} 80% 45% / .85)`;
+        cell.addEventListener('click',()=>{
+          if(!alive) return;
+          if(i===oddIndex){ score++; haptic(); beep(60,1100); updateScore(score,'circle'); round(); }
+          else { score=Math.max(0,score-1); beep(100,330); updateScore(score,'circle'); }
+        });
+        grid.appendChild(cell);
+      }
+    }
+    start.addEventListener('click', ()=>{ alive=true; score=0; updateScore(0,'circle'); round(); });
+    stop.addEventListener('click', ()=>{ alive=false; grid.innerHTML=''; });
+    updateScore(0,'circle');
   }
-  function tick(){
-    nextLetter();
-    streamTimer = setTimeout(tick, 1200);
-  }
-  matchBtn.addEventListener('click', ()=>{
-    if(!running) return;
-    const ok = hist.length> N && hist[hist.length-1] === hist[hist.length-1-N];
-    if(ok){ score++; setScore(score); addXP(6); ping(); }
-    else { score=Math.max(0,score-1); setScore(score); ping(); }
-    setBest('nback', score);
-  });
-  nsel.addEventListener('change', ()=>{ N=parseInt(nsel.value,10); score=0; setScore(0); });
-  function start(){ running=true; score=0; setScore(0); N=parseInt(nsel.value,10); tick(); }
-  function stop(){ running=false; clearTimeout(streamTimer); setBest('nback', score); }
-  return {start, stop, how:`Watch the letters. Tap "Match" when the current letter is the same as the one from N steps earlier.`};
-};
 
-// Matrix Mini (3 puzzles)
-modules.matrix = function(){
-  let running=false, score=0, idx=0;
-  const puzzles = [
-    { q:'Complete the 2×2: pattern increases by one dot each cell.', opts:['1','2','3','4'], correct: '3' },
-    { q:'Arrow rotates 90° each step. Pick the missing orientation.', opts:['↑','→','↓','←'], correct: '↓' },
-    { q:'Shade alternates like a checker. Choose the right shade.', opts:['▢','■','▢','■'], correct: '▢' }
-  ];
-  const qEl = document.createElement('div'); qEl.style.margin='12px 0';
-  const optsEl = document.createElement('div'); optsEl.style.display='flex'; optsEl.style.gap='8px'; optsEl.style.flexWrap='wrap';
-  stage.innerHTML=''; stage.appendChild(qEl); stage.appendChild(optsEl);
-  function render(){
-    const p = puzzles[idx];
-    qEl.textContent = `Puzzle ${idx+1}/${puzzles.length}: ${p.q}`;
-    optsEl.innerHTML='';
-    p.opts.forEach(o=>{
-      const b=document.createElement('button'); b.className='btn'; b.textContent=o;
-      b.addEventListener('click', ()=>{
-        if(!running) return;
-        if(o===p.correct){ score++; setScore(score); addXP(8); ping(); }
-        else { score=Math.max(0,score-1); setScore(score); ping(); }
-        setBest('matrix', score);
-        idx = (idx+1)%puzzles.length;
-        render();
-      });
-      optsEl.appendChild(b);
+  // Visual Span
+  function modSpan(){
+    showPanel('Visual Span'); stage.innerHTML=''; controls.innerHTML='';
+    const grid = document.createElement('div'); grid.className='grid-3'; stage.appendChild(grid);
+    const start = button('Start'), stop = button('Stop'); controls.append(start, stop);
+    let seq=[], user=[], score=0, alive=false;
+    const cells = Array.from({length:9}, (_,i)=>{
+      const c = document.createElement('div'); c.className='cell'; c.addEventListener('click', ()=> pick(i)); grid.appendChild(c); return c;
+    });
+    function flash(i){ cells[i].classList.add('hot'); beep(70,950); setTimeout(()=>cells[i].classList.remove('hot'), 260); }
+    function showSeq(n=0){ if(n>=seq.length){ return; } flash(seq[n]); setTimeout(()=>showSeq(n+1), 380); }
+    function next(){ user=[]; seq.push(Math.floor(Math.random()*9)); setTimeout(()=>showSeq(), 420); }
+    function pick(i){
+      if(!alive) return;
+      user.push(i);
+      if(user[user.length-1]!==seq[user.length-1]){ score=Math.max(0,score-1); updateScore(score,'span'); beep(120,300); seq=[]; next(); }
+      else { beep(50,1200); if(user.length===seq.length){ score++; haptic(); updateScore(score,'span'); next(); } }
+    }
+    start.addEventListener('click', ()=>{ alive=true; score=0; seq=[]; updateScore(0,'span'); next(); });
+    stop.addEventListener('click', ()=>{ alive=false; seq=[]; user=[]; });
+    updateScore(0,'span');
+  }
+
+  // N-Back (beta)
+  function modNBack(){
+    showPanel('N-Back (beta)'); stage.innerHTML=''; controls.innerHTML='';
+    const grid = document.createElement('div'); grid.className='grid-3'; stage.appendChild(grid);
+    const start = button('Start'), stop = button('Stop'); controls.append(start, stop);
+    let n=2, seq=[], i=-1, score=0, alive=false, ticker;
+    const cells = Array.from({length:9}, (_,j)=>{ const c=document.createElement('div'); c.className='cell'; grid.appendChild(c); return c; });
+    function step(){ cells.forEach(c=>c.className='cell'); i = Math.floor(Math.random()*9); cells[i].classList.add('hot'); seq.push(i); beep(60,980); }
+    function loop(){ step(); ticker = setTimeout(loop, 1200); }
+    function answer(match){
+      if(!alive) return;
+      const ok = (seq.length>n) && (i===seq[seq.length-1-n]);
+      const yes = match===true;
+      if( (ok && yes) || (!ok && !yes) ){ score++; haptic(); beep(60,1180); }
+      else { score=Math.max(0,score-1); beep(120,300); }
+      updateScore(score,'nback');
+    }
+    const btnYes=button('Match'), btnNo=button('No Match'); controls.append(btnYes, btnNo);
+    btnYes.addEventListener('click',()=>answer(true));
+    btnNo.addEventListener('click',()=>answer(false));
+    start.addEventListener('click', ()=>{ if(alive) return; alive=true; score=0; seq=[]; updateScore(0,'nback'); loop(); });
+    stop.addEventListener('click', ()=>{ alive=false; clearTimeout(ticker); });
+    updateScore(0,'nback');
+  }
+
+  // Matrix Mini
+  function modMatrix(){
+    showPanel('Matrix Mini (IQ)'); stage.innerHTML=''; controls.innerHTML='';
+    const wrap = document.createElement('div'); wrap.style.textAlign='center'; stage.appendChild(wrap);
+    let q=0, score=0;
+    const puzzles = [
+      {img:'🟦 🟦   🟦 ⬜   ⬜ ⬜', ans:'A', options:{A:'🟦',B:'⬜',C:'🟩'}},
+      {img:'▲ ▲   ■ ■   ? ?', ans:'B', options:{A:'●',B:'■',C:'▲'}},
+      {img:'● ▲ ■   ● ▲ ?  ', ans:'C', options:{A:'●',B:'▲',C:'■'}}
+    ];
+    const prompt = document.createElement('pre'); prompt.style.fontSize='28px'; prompt.textContent=''; wrap.appendChild(prompt);
+    const opt = document.createElement('div'); opt.style.display='flex'; opt.style.gap='10px'; opt.style.justifyContent='center'; wrap.appendChild(opt);
+    function show(){
+      const p = puzzles[q%puzzles.length];
+      prompt.textContent = p.img;
+      opt.innerHTML='';
+      for(const [k,v] of Object.entries(p.options)){
+        const b = button(`${k}: ${v}`); b.addEventListener('click',()=>{
+          if(k===p.ans){ score++; beep(60,1180); haptic(); } else { score=Math.max(0,score-1); beep(120,300); }
+          updateScore(score,'matrix'); q++; show();
+        });
+        opt.appendChild(b);
+      }
+    }
+    show(); updateScore(0,'matrix');
+  }
+
+  // Noticing 60s
+  function modNotice(){
+    showPanel('Noticing 60s'); stage.innerHTML=''; controls.innerHTML='';
+    const ta = document.createElement('textarea'); ta.placeholder='Notice: thoughts, sensations, environment...'; ta.style.width='100%'; ta.style.minHeight='200px'; stage.appendChild(ta);
+    const start = button('Start 60s'), saveBtn = button('Save note'); controls.append(start, saveBtn);
+    let t; start.addEventListener('click', ()=>{ clearTimeout(t); beep(60,900); haptic(); t=setTimeout(()=>{ beep(180,600); alert('60 seconds!'); }, 60000); });
+    saveBtn.addEventListener('click', ()=>{
+      const log = JSON.parse(localStorage.getItem('mg:notice')||'[]'); log.push({t:Date.now(), text:ta.value}); localStorage.setItem('mg:notice', JSON.stringify(log)); ta.value=''; alert('Saved.');
     });
   }
-  function start(){ running=true; score=0; setScore(0); idx=0; render(); }
-  function stop(){ running=false; setBest('matrix', score); }
-  return {start, stop, how:`Raven-style mini puzzles: infer the missing piece using simple rules (rotation, progression, shading).`};
-};
 
-// Noticing 60s
-modules.noticing = function(){
-  let running=false, score=0, t=60, timer=null;
-  const txt = document.createElement('div'); txt.className='notice'; txt.textContent='For 60 seconds, notice details around you. Tap "Log" each time you notice something specific.';
-  const cnt = document.createElement('div'); cnt.style.fontSize='28px'; cnt.style.margin='10px 0'; cnt.textContent='60';
-  const logBtn = document.createElement('button'); logBtn.className='btn primary'; logBtn.textContent='Log';
-  const list = document.createElement('div'); list.className='list';
-  logBtn.addEventListener('click', ()=>{ if(!running) return; score++; setScore(score); addXP(2); ping(); const tag=document.createElement('span'); tag.className='tag'; tag.textContent='noticed'; list.appendChild(tag); });
-  stage.innerHTML=''; stage.appendChild(txt); stage.appendChild(cnt); stage.appendChild(logBtn); stage.appendChild(list);
-  function tick(){
-    if(!running) return;
-    t--; cnt.textContent = String(t);
-    if(t<=0){ stop(); toast(`Noticing done: ${score}`); return; }
-    timer = setTimeout(tick, 1000);
+  // Meta-Check
+  function modCheck(){
+    showPanel('Meta-Check'); stage.innerHTML=''; controls.innerHTML='';
+    const form = document.createElement('div'); form.style.display='grid'; form.style.gap='10px';
+    form.innerHTML = `
+      <label>Focus (0-10): <input id="m-focus" type="range" min="0" max="10" value="6"></label>
+      <label>Energy (0-10): <input id="m-energy" type="range" min="0" max="10" value="6"></label>
+      <label>Calm (0-10): <input id="m-calm" type="range" min="0" max="10" value="6"></label>
+    `;
+    stage.appendChild(form);
+    const saveBtn = button('Save snapshot'); controls.append(saveBtn);
+    saveBtn.addEventListener('click', ()=>{
+      const snap = {t:Date.now(), f:+$('#m-focus').value, e:+$('#m-energy').value, c:+$('#m-calm').value};
+      const arr = JSON.parse(localStorage.getItem('mg:meta')||'[]'); arr.push(snap); localStorage.setItem('mg:meta', JSON.stringify(arr));
+      beep(60,1000); haptic();
+      alert('Saved.');
+    });
   }
-  function start(){ running=true; score=0; setScore(0); t=60; cnt.textContent='60'; list.innerHTML=''; tick(); }
-  function stop(){ running=false; clearTimeout(timer); setBest('noticing', score); }
-  return {start, stop, how:`For one minute, rapidly notice concrete details (colors, shapes, sounds). Tap "Log" each time.`};
-};
 
-// Meta-Check (every 30s prompts for 2 minutes)
-modules.metacheck = function(){
-  let running=false, score=0, prompts=['What am I focusing on right now?','Is this helpful for my goal?','What will I do next?'], t=120, timer=null;
-  const q = document.createElement('div'); q.className='notice'; q.textContent='Press Start to begin 2-minute meta-check. Prompts appear every 30 seconds.';
-  const cnt = document.createElement('div'); cnt.style.fontSize='28px'; cnt.style.margin='10px 0'; cnt.textContent='120';
-  stage.innerHTML=''; stage.appendChild(q); stage.appendChild(cnt);
-  function tick(){
-    if(!running) return;
-    t--; cnt.textContent = String(t);
-    if(t%30===0){ q.textContent = prompts[(t/30)%prompts.length]; ping(); }
-    if(t<=0){ stop(); toast('Meta-Check complete'); }
-    timer = setTimeout(tick, 1000);
+  // Micro-Journal
+  function modJournal(){
+    showPanel('Micro-Journal'); stage.innerHTML=''; controls.innerHTML='';
+    const ta = document.createElement('textarea'); ta.placeholder='2-minute free write...'; ta.style.width='100%'; ta.style.minHeight='220px'; stage.appendChild(ta);
+    let autosave = setInterval(()=>{
+      const log = JSON.parse(localStorage.getItem('mg:journal')||'[]');
+      log.push({t:Date.now(), text:ta.value.slice(0,800)});
+      localStorage.setItem('mg:journal', JSON.stringify(log));
+    }, 20000);
+    controls.append(button('Stop'), button('Clear'));
+    controls.firstChild.addEventListener('click',()=>{ clearInterval(autosave); });
+    controls.lastChild.addEventListener('click',()=>{ ta.value=''; });
   }
-  function start(){ running=true; score=0; setScore(0); t=120; q.textContent='Starting…'; tick(); }
-  function stop(){ running=false; clearTimeout(timer); }
-  return {start, stop, how:`Every 30s for 2 minutes, you’ll get a quick self-monitoring prompt. Answer silently; the point is noticing.`};
-};
 
-// Micro-Journal
-modules.journal = function(){
-  let running=false, timer=null, t=120;
-  stage.innerHTML='';
-  const tip = document.createElement('div'); tip.className='notice'; tip.textContent='2-minute micro-journal. Write anything you notice about your thoughts/feelings. Autosaves.';
-  const ta = document.createElement('textarea'); ta.className='journal'; ta.placeholder='Start typing…';
-  ta.value = state.journalDraft || '';
-  ta.addEventListener('input', ()=>{ state.journalDraft = ta.value; saveState(); });
-  const cnt = document.createElement('div'); cnt.className='counter'; cnt.textContent='120s';
-  stage.appendChild(tip); stage.appendChild(ta); stage.appendChild(cnt);
-  function tick(){
-    if(!running) return;
-    t--; cnt.textContent = t + 's';
-    if(t<=0){ stop(); toast('Saved'); addXP(10); }
-    timer = setTimeout(tick, 1000);
+  function button(label){ const b=document.createElement('button'); b.className='btn'; b.textContent=label; return b; }
+
+  function init(){
+    hidePanel();
+    updateScore(0,'focus');
   }
-  function start(){ running=true; t=120; cnt.textContent='120s'; tick(); }
-  function stop(){ running=false; clearTimeout(timer); }
-  return {start, stop, how:`Write continuously for 2 minutes. Don’t overthink grammar or spelling. Autosaves as you type.`};
-};
+  init();
+})();
